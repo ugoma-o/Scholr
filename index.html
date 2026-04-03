@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scholr — AI Study Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Mono:wght@400;500&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0D0B08;--cream:#F4EFE6;--paper:#FDFAF5;
+  --amber:#C97D0E;--amber-lt:#E8A020;--amber-dim:#7A4C08;
+  --rust:#9E3A1E;--muted:#7B7368;--border:#D8D0C0;
+  --card:#FFFFFF;--hl:#FFF3C4;--success:#1A6B3A;--success-bg:#EAF7EE;
+  --danger:#9E2020;--danger-bg:#FDEAEA;
+  --sidebar:220px;
+}
+html,body{height:100%;font-family:'Lora',Georgia,serif;background:var(--cream);color:var(--ink);overflow:hidden}
+
+/* ── LAYOUT ── */
+.shell{display:flex;height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sidebar);flex-shrink:0;
+  background:var(--ink);
+  display:flex;flex-direction:column;
+  padding:0;overflow:hidden;
+  border-right:1px solid rgba(255,255,255,0.06);
+}
+.sidebar-logo{
+  padding:28px 24px 22px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.logo-mark{
+  font-family:'Playfair Display',serif;font-weight:900;font-size:24px;
+  color:var(--cream);letter-spacing:-0.5px;line-height:1;
+}
+.logo-mark em{color:var(--amber-lt);font-style:italic;}
+.logo-sub{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-top:6px;}
+
+.sidebar-nav{flex:1;padding:20px 0;}
+.nav-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.25);padding:0 20px;margin-bottom:8px;}
+.nav-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 20px;cursor:pointer;
+  font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.3px;
+  color:rgba(255,255,255,0.45);
+  border-left:2px solid transparent;
+  transition:all 0.15s;user-select:none;
+}
+.nav-item:hover{color:rgba(255,255,255,0.75);background:rgba(255,255,255,0.04);}
+.nav-item.active{color:var(--amber-lt);border-left-color:var(--amber);background:rgba(201,125,14,0.1);}
+.nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.7;}
+.nav-item.active .nav-icon{opacity:1;}
+.nav-divider{height:1px;background:rgba(255,255,255,0.07);margin:12px 20px;}
+
+.sidebar-footer{
+  padding:16px 20px;
+  border-top:1px solid rgba(255,255,255,0.07);
+}
+.api-key-section{}
+.api-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:6px;display:block;}
+.api-input{
+  width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+  border-radius:5px;padding:8px 10px;
+  font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.6);
+  outline:none;transition:border-color 0.2s;
+}
+.api-input:focus{border-color:rgba(201,125,14,0.5);}
+.api-input::placeholder{color:rgba(255,255,255,0.2);}
+.api-status{font-family:'DM Mono',monospace;font-size:10px;margin-top:5px;letter-spacing:0.3px;}
+
+/* ── MAIN ── */
+.main{flex:1;overflow-y:auto;overflow-x:hidden;background:var(--paper);}
+.view{display:none;min-height:100%;padding:40px 48px 60px;}
+.view.active{display:block;}
+
+/* ── HOME ── */
+.home-hero{padding:48px 0 40px;max-width:700px;}
+.home-eyebrow{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--amber);margin-bottom:18px;}
+.home-hero h1{font-family:'Playfair Display',serif;font-size:clamp(34px,5vw,54px);font-weight:900;line-height:1.08;letter-spacing:-1px;color:var(--ink);margin-bottom:18px;}
+.home-hero h1 em{font-style:italic;color:var(--amber);}
+.home-sub{font-size:16px;color:var(--muted);line-height:1.75;max-width:520px;margin-bottom:40px;}
+
+.mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;max-width:800px;margin-bottom:48px;}
+.mode-card{
+  background:var(--card);border:1.5px solid var(--border);border-radius:14px;
+  padding:28px;cursor:pointer;position:relative;overflow:hidden;
+  transition:border-color 0.2s,transform 0.15s,box-shadow 0.2s;
+}
+.mode-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(201,125,14,0.04) 0%,transparent 60%);opacity:0;transition:opacity 0.2s;}
+.mode-card:hover{border-color:var(--amber);transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,0.08);}
+.mode-card:hover::before{opacity:1;}
+.mode-num{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:14px;display:block;}
+.mode-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--ink);margin-bottom:8px;line-height:1.2;}
+.mode-desc{font-size:13px;color:var(--muted);line-height:1.65;margin-bottom:16px;}
+.mode-action{font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);letter-spacing:0.5px;}
+
+.home-divider{height:1px;background:var(--border);max-width:800px;margin-bottom:36px;}
+.how-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:20px;}
+.how-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;max-width:800px;}
+.how-item{padding:18px 20px;background:var(--cream);border-radius:10px;border:1px solid var(--border);}
+.how-step{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--amber);margin-bottom:8px;}
+.how-text{font-size:13px;color:var(--muted);line-height:1.6;}
+
+/* ── SHARED EXAM/TEACH ── */
+.view-header{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  padding-bottom:20px;margin-bottom:24px;
+  border-bottom:1px solid var(--border);flex-wrap:wrap;gap:14px;
+}
+.view-header-left h2{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--ink);margin-bottom:4px;}
+.view-header-left p{font-size:13px;color:var(--muted);}
+.header-stats{display:flex;gap:24px;align-items:center;flex-wrap:wrap;}
+.stat{text-align:center;}
+.stat-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--ink);}
+.stat-lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-top:2px;}
+
+/* Input -->  material paste area */
+.input-phase{max-width:680px;}
+.input-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;}
+.example-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+.eg-chip{
+  font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);
+  background:rgba(201,125,14,0.08);border:1px solid rgba(201,125,14,0.2);
+  border-radius:4px;padding:5px 10px;cursor:pointer;letter-spacing:0.3px;transition:background 0.15s;
+}
+.eg-chip:hover{background:rgba(201,125,14,0.18);}
+textarea.study-ta{
+  width:100%;min-height:200px;border:1.5px solid var(--border);border-radius:8px;
+  padding:16px;font-family:'Lora',serif;font-size:15px;line-height:1.7;
+  color:var(--ink);background:#fff;resize:vertical;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;
+}
+textarea.study-ta:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(201,125,14,0.1);}
+textarea.study-ta::placeholder{color:var(--muted);opacity:0.6;}
+.ta-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:10px;}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  border:none;border-radius:6px;cursor:pointer;
+  font-family:'DM Mono',monospace;font-size:12px;font-weight:500;
+  letter-spacing:0.8px;text-transform:uppercase;
+  padding:11px 22px;transition:all 0.15s;outline:none;
+}
+.btn-primary{background:var(--ink);color:var(--cream);}
+.btn-primary:hover:not(:disabled){background:#2A2618;transform:translateY(-1px);}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--ink);color:var(--ink);}
+.btn-amber{background:var(--amber);color:#fff;}
+.btn-amber:hover:not(:disabled){background:var(--amber-lt);}
+.btn-amber:disabled{opacity:0.4;cursor:not-allowed;}
+.btn-sm{padding:8px 14px;font-size:10px;}
+
+/* Chat layout */
+.session-wrap{display:flex;gap:28px;flex-wrap:wrap;}
+.chat-col{flex:1;min-width:280px;}
+.side-col{width:200px;flex-shrink:0;}
+
+/* Messages */
+.messages{margin-bottom:24px;}
+.msg{margin-bottom:28px;animation:fadeUp 0.3s ease both;}
+.msg-ai{padding-left:16px;border-left:2px solid var(--border);}
+.msg-user{text-align:right;padding-right:16px;border-right:2px solid rgba(201,125,14,0.3);}
+.msg-role{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:8px;}
+.msg-text{font-size:15px;line-height:1.8;color:var(--ink);}
+.msg-user .msg-text{color:var(--muted);}
+
+/* Thinking dots */
+.thinking{display:inline-flex;gap:4px;align-items:center;padding:4px 0;}
+@keyframes throb{0%,80%,100%{opacity:0.2;transform:scale(0.8)}40%{opacity:1;transform:scale(1)}}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--muted);display:inline-block;}
+
+/* Section pills */
+.section-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;}
+.spill{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 12px;border-radius:20px;
+  font-family:'DM Mono',monospace;font-size:10px;font-weight:500;
+  border:1px solid var(--border);background:var(--cream);color:var(--muted);
+  white-space:nowrap;transition:all 0.2s;
+}
+.spill.done{background:var(--success-bg);color:var(--success);border-color:rgba(26,107,58,0.25);}
+.spill.active{background:#fff;color:var(--ink);border-color:var(--ink);border-width:1.5px;}
+
+/* Input area (chat) */
+.chat-input-area{padding-top:20px;border-top:1px solid var(--border);}
+.chat-input-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:12px;}
+textarea.chat-ta{
+  width:100%;border:1.5px solid var(--border);border-radius:8px;
+  padding:14px;font-family:'Lora',serif;font-size:15px;line-height:1.6;
+  color:var(--ink);background:#fff;resize:none;outline:none;
+  transition:border-color 0.2s,box-shadow 0.2s;rows:3;
+}
+textarea.chat-ta:focus{border-color:var(--amber);box-shadow:0 0 0 3px rgba(201,125,14,0.1);}
+textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
+.chat-input-footer{display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:8px;}
+
+/* Voice mic */
+@keyframes ring{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes ripple{0%{transform:scale(1);opacity:0.5}100%{transform:scale(2.2);opacity:0}}
+.mic-wrap{position:relative;display:inline-flex;flex-direction:column;align-items:center;gap:8px;}
+.mic-ripple{
+  position:absolute;top:50%;left:50%;
+  width:52px;height:52px;margin:-26px 0 0 -26px;
+  border-radius:50%;background:rgba(158,58,30,0.15);opacity:0;pointer-events:none;
+}
+.mic-ripple.on{animation:ripple 1.3s ease-out infinite;}
+.mic-btn{
+  width:52px;height:52px;border-radius:50%;
+  border:1.5px solid var(--border);background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;z-index:1;
+  transition:background 0.2s,border-color 0.2s;
+}
+.mic-btn.on{background:var(--danger-bg);border-color:var(--danger);animation:ring 1.2s ease-in-out infinite;}
+.mic-btn:disabled{opacity:0.3;cursor:not-allowed;animation:none;}
+.mic-lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.5px;}
+.mic-lbl.on{color:var(--danger);}
+.or-bar{display:flex;align-items:center;gap:10px;margin:14px 0;}
+.or-bar::before,.or-bar::after{content:'';flex:1;height:1px;background:var(--border);}
+.or-bar span{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
+
+/* Side panels */
+.panel-title{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;font-weight:500;}
+.gap-item,.strength-item,.note-item{
+  padding:10px 12px;border-radius:8px;margin-bottom:8px;
+  font-size:12px;line-height:1.55;
+}
+.gap-item{background:var(--danger-bg);color:var(--danger);border:1px solid rgba(158,32,32,0.15);}
+.gap-tag{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:4px;opacity:0.7;}
+.strength-item{background:var(--success-bg);color:var(--success);border:1px solid rgba(26,107,58,0.15);}
+.note-item{background:#EEF4FF;color:#1B3F8C;border:1px solid rgba(27,63,140,0.15);}
+.panel-empty{font-size:13px;color:var(--muted);font-style:italic;line-height:1.65;}
+
+/* Section divider */
+.section-divider{
+  display:flex;align-items:center;gap:12px;margin:24px 0;
+}
+.section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.section-divider span{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+
+/* Next bar */
+.next-bar{
+  display:none;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 18px;background:var(--success-bg);
+  border:1px solid rgba(26,107,58,0.2);border-radius:8px;margin-bottom:20px;
+}
+.next-bar.on{display:flex;}
+.next-bar-text p{font-size:13px;font-weight:600;color:var(--success);margin:0 0 2px;}
+.next-bar-text span{font-size:12px;color:var(--success);opacity:0.75;}
+
+/* Report */
+.report-body{max-width:620px;font-size:15px;line-height:1.85;color:var(--muted);}
+.report-body p{margin-bottom:1.1rem;}
+.report-body p.heading{color:var(--ink);font-weight:600;}
+.report-score{
+  display:inline-flex;align-items:baseline;gap:6px;
+  background:var(--ink);color:var(--cream);
+  padding:14px 24px;border-radius:8px;margin-bottom:28px;
+}
+.report-score .num{font-family:'Playfair Display',serif;font-size:40px;font-weight:900;color:var(--amber-lt);line-height:1;}
+.report-score .denom{font-family:'DM Mono',monospace;font-size:14px;color:rgba(255,255,255,0.4);}
+.report-score .label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-left:12px;}
+
+/* Alert / notice */
+.notice{
+  padding:12px 16px;border-radius:8px;font-size:13px;line-height:1.6;
+  font-family:'DM Mono',monospace;letter-spacing:0.2px;margin-bottom:20px;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.notice.warn{background:#FFF7E6;color:var(--amber-dim);border:1px solid rgba(201,125,14,0.2);}
+.notice.info{background:#EEF4FF;color:#1B3F8C;border:1px solid rgba(27,63,140,0.2);}
+
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* Scrollbar */
+.main::-webkit-scrollbar{width:5px;}
+.main::-webkit-scrollbar-track{background:transparent;}
+.main::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;}
+
+/* Mobile responsive */
+@media(max-width:640px){
+  .view{padding:24px 20px 48px;}
+  .sidebar{display:none;}
+  .mobile-nav{display:flex;}
+  .side-col{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Schol<em>r</em></div>
+      <div class="logo-sub">AI Study Intelligence</div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-label">Modes</div>
+      <div class="nav-item active" onclick="showView('home')" id="nav-home">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 6L8 2l6 4v8H2z"/><path d="M6 16v-5h4v5"/>
+        </svg>
+        Home
+      </div>
+      <div class="nav-item" onclick="showView('examine')" id="nav-examine">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="8" cy="8" r="6"/><path d="M8 5v4M8 11v1"/>
+        </svg>
+        Examine me
+      </div>
+      <div class="nav-item" onclick="showView('teach')" id="nav-teach">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 12V5l6-3 6 3v7M5 16V9h6v7"/>
+        </svg>
+        Teach mode
+      </div>
+
+      <div class="nav-divider"></div>
+      <div class="nav-label">Session</div>
+      <div class="nav-item" onclick="resetCurrentMode()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M1 8a7 7 0 107-7"/><path d="M1 4v4h4"/>
+        </svg>
+        New session
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <label class="api-label">Anthropic API key</label>
+      <input type="password" class="api-input" id="apiKeyInput" placeholder="sk-ant-..." oninput="saveKey()">
+      <div class="api-status" id="apiStatus" style="color:rgba(255,255,255,0.25);">Not set</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ══ HOME ══ -->
+    <div class="view active" id="view-home">
+      <div class="home-hero">
+        <p class="home-eyebrow">Study Intelligence · Higher Education</p>
+        <h1>The gap between <em>reading</em><br>and <em>knowing.</em></h1>
+        <p class="home-sub">Scholr closes it. Two AI-powered modes that go beyond passive study — one that challenges you like an Oxford examiner, one that proves you can teach what you think you know.</p>
+      </div>
+
+      <div class="mode-grid">
+        <div class="mode-card" onclick="showView('examine')">
+          <span class="mode-num">Mode 01</span>
+          <div class="mode-title">Socratic Examiner</div>
+          <p class="mode-desc">Paste your material. An AI examiner reads it and questions you relentlessly — never accepting vague answers, always exposing the edge of your understanding.</p>
+          <span class="mode-action">Begin examination →</span>
+        </div>
+        <div class="mode-card" onclick="showView('teach')">
+          <span class="mode-num">Mode 02</span>
+          <div class="mode-title">Teach Mode</div>
+          <p class="mode-desc">You become the teacher. Explain your material section by section — out loud or in text — to an AI student who only moves on when they genuinely understand.</p>
+          <span class="mode-action">Start teaching →</span>
+        </div>
+      </div>
+
+      <div class="home-divider"></div>
+      <p class="how-title">Why it works</p>
+      <div class="how-grid">
+        <div class="how-item">
+          <div class="how-step">Active recall</div>
+          <p class="how-text">Producing answers under pressure is the most effective method of consolidating memory — not re-reading.</p>
+        </div>
+        <div class="how-item">
+          <div class="how-step">The protégé effect</div>
+          <p class="how-text">Teaching forces your brain to organise information coherently, surfacing gaps you never knew you had.</p>
+        </div>
+        <div class="how-item">
+          <div class="how-step">Gap mapping</div>
+          <p class="how-text">Both modes track where your understanding breaks down in real time — giving you a precise study prescription.</p>
+        </div>
+        <div class="how-item">
+          <div class="how-step">Voice-first</div>
+          <p class="how-text">Speak your answers naturally. Verbal articulation strengthens neural encoding more than typing alone.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ EXAMINE MODE ══ -->
+    <div class="view" id="view-examine">
+
+      <!-- Input phase -->
+      <div id="ex-input">
+        <div class="view-header">
+          <div class="view-header-left">
+            <h2>Examine me</h2>
+            <p>Paste your material. The examiner will question you until your gaps are found.</p>
+          </div>
+        </div>
+        <div class="input-phase">
+          <div class="notice info">&#9432; The material disappears once you begin. The examiner has read it — you haven't. That asymmetry is the point.</div>
+          <label class="input-label">Load an example →</label>
+          <div class="example-row">
+            <button class="eg-chip" onclick="loadEx('ex','bio')">🧬 Cell Biology</button>
+            <button class="eg-chip" onclick="loadEx('ex','econ')">📈 Macroeconomics</button>
+            <button class="eg-chip" onclick="loadEx('ex','psych')">🧠 Cognitive Psych</button>
+            <button class="eg-chip" onclick="loadEx('ex','hist')">🏛️ Roman History</button>
+          </div>
+          <label class="input-label" style="margin-top:12px;">Your material</label>
+          <textarea class="study-ta" id="ex-material" rows="12" placeholder="Paste any academic text — lecture notes, paper excerpt, textbook passage, research abstract…"></textarea>
+          <div class="ta-footer">
+            <span id="ex-chars" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">0 characters</span>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-ghost btn-sm" onclick="clearEx()">Clear</button>
+              <button class="btn btn-primary" onclick="beginExam()">Begin examination →</button>
+            </div>
+          </div>
+          <p id="ex-err" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--danger);margin-top:10px;display:none;">Please paste at least a paragraph to begin.</p>
+        </div>
+      </div>
+
+      <!-- Session phase -->
+      <div id="ex-session" style="display:none;">
+        <div class="view-header">
+          <div class="view-header-left">
+            <h2>Examination</h2>
+            <p id="ex-topic" style="max-width:360px;"></p>
+          </div>
+          <div class="header-stats">
+            <div class="stat"><div class="stat-val" id="ex-exchanges">0</div><div class="stat-lbl">Exchanges</div></div>
+            <div class="stat"><div class="stat-val" id="ex-gaps-count" style="color:var(--danger);">0</div><div class="stat-lbl">Gaps</div></div>
+            <button class="btn btn-primary btn-sm" id="ex-report-btn" style="display:none;" onclick="generateExamReport()">Report →</button>
+            <button class="btn btn-ghost btn-sm" onclick="resetExamine()">End</button>
+          </div>
+        </div>
+
+        <div class="session-wrap">
+          <div class="chat-col">
+            <div id="ex-messages" class="messages"></div>
+            <div class="chat-input-area">
+              <span class="chat-input-label">Your answer — Enter to submit</span>
+              <textarea class="chat-ta" id="ex-input-ta" rows="3" placeholder="Answer the examiner's question…" onkeydown="exKey(event)"></textarea>
+              <div class="chat-input-footer">
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">Shift+Enter for new line</span>
+                <button class="btn btn-primary" onclick="sendExamAnswer()">Submit →</button>
+              </div>
+            </div>
+          </div>
+          <div class="side-col">
+            <p class="panel-title">Knowledge gaps</p>
+            <div id="ex-gaps-list"><p class="panel-empty">None found yet…</p></div>
+            <div id="ex-strengths-wrap" style="margin-top:20px;display:none;">
+              <p class="panel-title">Demonstrated</p>
+              <div id="ex-strengths-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Report phase -->
+      <div id="ex-report" style="display:none;">
+        <div class="view-header">
+          <div class="view-header-left"><h2>Mastery report</h2></div>
+          <button class="btn btn-ghost btn-sm" onclick="resetExamine()">New examination</button>
+        </div>
+        <div id="ex-report-content" class="report-body"></div>
+      </div>
+
+    </div>
+
+    <!-- ══ TEACH MODE ══ -->
+    <div class="view" id="view-teach">
+
+      <!-- Input phase -->
+      <div id="tc-input">
+        <div class="view-header">
+          <div class="view-header-left">
+            <h2>Teach mode</h2>
+            <p>You become the teacher. Lex, your AI student, learns section by section.</p>
+          </div>
+        </div>
+        <div class="input-phase">
+          <div class="notice info">&#9432; Speak or type your explanations. Lex asks one foundational question at a time and only moves on when they genuinely understand.</div>
+          <label class="input-label">Load an example →</label>
+          <div class="example-row">
+            <button class="eg-chip" onclick="loadEx('tc','bio')">🧬 Cell Biology</button>
+            <button class="eg-chip" onclick="loadEx('tc','econ')">📈 Macroeconomics</button>
+            <button class="eg-chip" onclick="loadEx('tc','psych')">🧠 Cognitive Psych</button>
+            <button class="eg-chip" onclick="loadEx('tc','hist')">🏛️ Roman History</button>
+          </div>
+          <label class="input-label" style="margin-top:12px;">Your material</label>
+          <textarea class="study-ta" id="tc-material" rows="12" placeholder="Paste any academic text — lecture notes, paper excerpt, textbook passage…"></textarea>
+          <div class="ta-footer">
+            <span id="tc-chars" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">0 characters</span>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-ghost btn-sm" onclick="clearTc()">Clear</button>
+              <button class="btn btn-primary" onclick="beginTeach()">Prepare my lesson →</button>
+            </div>
+          </div>
+          <p id="tc-err" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--danger);margin-top:10px;display:none;">Please paste at least a paragraph to begin.</p>
+        </div>
+      </div>
+
+      <!-- Preparing phase -->
+      <div id="tc-preparing" style="display:none;">
+        <div style="display:flex;flex-direction:column;align-items:center;padding:5rem 0;gap:16px;">
+          <span style="font-family:'DM Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:1px;">Analysing material and preparing sections</span>
+          <span style="display:inline-flex;gap:5px;">
+            <span class="dot" style="animation:throb 1.2s infinite;"></span>
+            <span class="dot" style="animation:throb 1.2s 0.2s infinite;"></span>
+            <span class="dot" style="animation:throb 1.2s 0.4s infinite;"></span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Session phase -->
+      <div id="tc-session" style="display:none;">
+        <div class="view-header">
+          <div class="view-header-left">
+            <h2 id="tc-section-title">Section 1</h2>
+            <p id="tc-subtitle"></p>
+          </div>
+          <div class="header-stats">
+            <div class="stat"><div class="stat-val" id="tc-progress">1/1</div><div class="stat-lbl">Section</div></div>
+            <div class="stat"><div class="stat-val" id="tc-learned">0</div><div class="stat-lbl">Learned</div></div>
+            <button class="btn btn-ghost btn-sm" id="tc-skip-btn" onclick="tcSkip()">Skip →</button>
+            <button class="btn btn-primary btn-sm" id="tc-report-btn" style="display:none;" onclick="generateTeachReport()">Report →</button>
+            <button class="btn btn-ghost btn-sm" onclick="resetTeach()">End</button>
+          </div>
+        </div>
+
+        <div id="tc-pills" class="section-pills"></div>
+
+        <div class="next-bar" id="tc-next-bar">
+          <div class="next-bar-text">
+            <p>Lex understands this section</p>
+            <span id="tc-next-label"></span>
+          </div>
+          <button class="btn btn-amber" id="tc-next-btn" onclick="tcNextSection()">Next section →</button>
+        </div>
+
+        <div class="session-wrap">
+          <div class="chat-col">
+            <div id="tc-messages" class="messages"></div>
+            <div class="chat-input-area" id="tc-input-area">
+              <span class="chat-input-label">Your explanation</span>
+
+              <!-- Voice -->
+              <div style="display:flex;justify-content:center;margin-bottom:4px;">
+                <div class="mic-wrap">
+                  <div class="mic-ripple" id="tc-ripple"></div>
+                  <button class="mic-btn" id="tc-mic" onclick="tcToggleMic()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="9" y="2" width="6" height="12" rx="3"/>
+                      <path d="M5 10a7 7 0 0014 0"/><line x1="12" y1="19" x2="12" y2="22"/>
+                      <line x1="8" y1="22" x2="16" y2="22"/>
+                    </svg>
+                  </button>
+                  <span class="mic-lbl" id="tc-mic-lbl">Tap to speak</span>
+                </div>
+              </div>
+              <p id="tc-voice-note" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;"></p>
+
+              <div class="or-bar"><span>or type</span></div>
+
+              <textarea class="chat-ta" id="tc-input-ta" rows="3" placeholder="Explain this section in your own words…" onkeydown="tcKey(event)"></textarea>
+              <div class="chat-input-footer">
+                <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">Shift+Enter for new line</span>
+                <button class="btn btn-primary" onclick="sendTeachExplanation()">Submit →</button>
+              </div>
+            </div>
+          </div>
+          <div class="side-col">
+            <p class="panel-title">Student notes</p>
+            <div id="tc-notes-list"><p class="panel-empty">Lex will note what they learn…</p></div>
+            <div style="margin-top:20px;">
+              <p class="panel-title">Teaching tips</p>
+              <p class="panel-empty">Use analogies. Define terms. Explain causes not just facts. The student will ask if confused.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Report phase -->
+      <div id="tc-report" style="display:none;">
+        <div class="view-header">
+          <div class="view-header-left"><h2>Teaching report</h2></div>
+          <button class="btn btn-ghost btn-sm" onclick="resetTeach()">New session</button>
+        </div>
+        <div id="tc-report-content" class="report-body"></div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ─── SHARED DATA ───────────────────────────────────────────────
+const EXAMPLES = {
+  bio:`The cell membrane is a fluid mosaic model consisting primarily of a phospholipid bilayer embedded with proteins. The hydrophilic phosphate heads face outward toward aqueous environments, while the hydrophobic fatty acid tails face inward, creating a semipermeable barrier. Membrane proteins serve multiple functions including transport (channel proteins, carrier proteins), signal transduction (receptor proteins), and structural support. Cholesterol molecules interspersed within the bilayer regulate membrane fluidity — preventing it from becoming too rigid at low temperatures or too fluid at high temperatures. The process of selective permeability allows small nonpolar molecules like O₂ and CO₂ to pass freely, while larger molecules and ions require specific transport proteins.`,
+  econ:`Keynesian economics, developed by John Maynard Keynes during the Great Depression, argues that aggregate demand — the total spending in an economy — is the primary driver of output and employment. When private sector demand falls, government fiscal policy (spending increases or tax cuts) can stimulate aggregate demand and pull the economy out of recession. This contrasts with classical economics, which held that markets self-correct. The multiplier effect is central to Keynesian theory: an initial injection of government spending circulates through the economy multiple times, producing a magnified total effect on GDP. Critics argue this theory ignores crowding out, where government borrowing raises interest rates and reduces private investment.`,
+  psych:`Cognitive load theory, proposed by John Sweller in 1988, describes the mental effort required to process information in working memory. Working memory has limited capacity — typically 7±2 chunks of information — and cognitive overload occurs when demands exceed this limit. The theory distinguishes three types: intrinsic load (inherent complexity of material), extraneous load (poor instructional design that wastes mental resources), and germane load (useful processing that builds schemas in long-term memory). Effective instructional design reduces extraneous load through techniques like worked examples, split-attention effect minimisation, and the expertise reversal effect.`,
+  hist:`The fall of the Western Roman Empire in 476 CE was not a sudden collapse but a gradual process spanning centuries. Historians debate its causes: Edward Gibbon famously attributed it to moral decline and Christianity undermining civic virtue; Peter Heather emphasises external pressure from Hunnic invasions that displaced Germanic peoples into Roman territory. Internal factors included the Crisis of the Third Century (235–284 CE), military overspending, currency debasement leading to inflation, and political instability with over 20 emperors in 50 years. The Eastern Empire (Byzantine) survived until 1453, suggesting the fall was a localised Western phenomenon shaped by unique geographic and political vulnerabilities.`
+};
+
+function getKey(){return document.getElementById('apiKeyInput').value.trim();}
+function saveKey(){
+  const k=getKey();
+  localStorage.setItem('scholr_key',k);
+  const s=document.getElementById('apiStatus');
+  if(k.startsWith('sk-ant-')){s.textContent='● Key saved';s.style.color='#4ade80';}
+  else if(k.length>0){s.textContent='⚠ Check key format';s.style.color='#fbbf24';}
+  else{s.textContent='Not set';s.style.color='rgba(255,255,255,0.25)';}
+}
+(function(){const k=localStorage.getItem('scholr_key');if(k){document.getElementById('apiKeyInput').value=k;saveKey();}})();
+
+async function callAPI(messages,system,maxTokens=800){
+  const key=getKey();
+  if(!key){alert('Please enter your Anthropic API key in the sidebar.');return null;}
+  const body={model:'claude-sonnet-4-20250514',max_tokens:maxTokens,messages};
+  if(system)body.system=system;
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify(body)
+  });
+  const d=await r.json();
+  if(d.error){alert('API error: '+d.error.message);return null;}
+  return d.content.map(b=>b.text||'').join('');
+}
+
+function esc(t){const d=document.createElement('div');d.appendChild(document.createTextNode(t));return d.innerHTML;}
+function parse(raw){
+  const get=tag=>{const m=raw.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));return m?m[1].trim():null;};
+  return{reply:get('reply')||raw.trim(),status:get('status')||'questioning',gap:get('gap'),strength:get('strength'),note:get('note')};
+}
+
+// ─── NAV ───────────────────────────────────────────────────────
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('nav-'+id).classList.add('active');
+  document.querySelector('.main').scrollTo(0,0);
+}
+function resetCurrentMode(){
+  if(document.getElementById('view-examine').classList.contains('active'))resetExamine();
+  else if(document.getElementById('view-teach').classList.contains('active'))resetTeach();
+}
+
+// ─── EXAMPLES ──────────────────────────────────────────────────
+function loadEx(mode,key){
+  const ta=document.getElementById(mode+'-material');
+  ta.value=EXAMPLES[key];
+  document.getElementById(mode+'-chars').textContent=ta.value.length+' characters';
+}
+
+// ─── EXAMINE MODE ──────────────────────────────────────────────
+let exMaterial='',exHistory=[],exGaps=[],exStrengths=[],exExchanges=0,exLoading=false;
+
+document.getElementById('ex-material').addEventListener('input',function(){
+  document.getElementById('ex-chars').textContent=this.value.length+' characters';
+});
+function clearEx(){document.getElementById('ex-material').value='';document.getElementById('ex-chars').textContent='0 characters';}
+
+function exKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendExamAnswer();}}
+
+function buildExamSystem(){
+  return `You are a rigorous Socratic examiner. You are examining a student on the following material:
+---
+${exMaterial}
+---
+Rules:
+1. Open with ONE specific, non-trivial question from the material. No preamble.
+2. NEVER say "correct", "exactly", "great", "right", "well done". Never give simple affirmation.
+3. If substantially correct: probe deeper or attack from a different angle immediately.
+4. If a gap: ask a question that makes them confront it themselves — do not explain.
+5. If wrong: find the specific logical fault and press with a focused follow-up question.
+6. ONE question per turn. No multi-part questions.
+7. Vary: definitions, mechanisms, applications, comparisons, exceptions, causes, consequences.
+8. Be unflinching but not cruel.
+
+Format EXACTLY — no deviation, no extra text:
+<reply>Your examiner response and next question</reply>
+<gap>null</gap>
+<strength>null</strength>
+
+When a concrete gap is revealed:
+<reply>Your response and next question</reply>
+<gap>Specific gap, e.g. "Cannot explain why cholesterol prevents rigidity at low temperatures"</gap>
+<strength>null</strength>
+
+When understanding is demonstrated:
+<reply>Your response and next question</reply>
+<gap>null</gap>
+<strength>What they got right, e.g. "Correctly explained selective permeability mechanism"</strength>`;
+}
+
+async function beginExam(){
+  exMaterial=document.getElementById('ex-material').value.trim();
+  if(exMaterial.length<60){document.getElementById('ex-err').style.display='block';return;}
+  document.getElementById('ex-err').style.display='none';
+  document.getElementById('ex-input').style.display='none';
+  document.getElementById('ex-session').style.display='block';
+  document.getElementById('ex-topic').textContent=exMaterial.substring(0,70)+'…';
+  exHistory=[];exGaps=[];exStrengths=[];exExchanges=0;
+  exAddThinking();
+  const raw=await callAPI([{role:'user',content:'Begin the examination.'}],buildExamSystem());
+  exRemoveThinking();
+  if(raw){const p=parse(raw);exAddMsg('ai',p.reply);exHistory.push({role:'user',content:'Begin.'},{role:'assistant',content:raw});}
+}
+
+async function sendExamAnswer(){
+  if(exLoading)return;
+  const ta=document.getElementById('ex-input-ta');
+  const text=ta.value.trim();if(!text)return;
+  ta.value='';exLoading=true;
+  exAddMsg('user',text);
+  exHistory.push({role:'user',content:text});
+  exExchanges++;
+  document.getElementById('ex-exchanges').textContent=exExchanges;
+  if(exExchanges>=4)document.getElementById('ex-report-btn').style.display='inline-flex';
+  exAddThinking();
+  const raw=await callAPI(exHistory,buildExamSystem());
+  exRemoveThinking();exLoading=false;
+  if(raw){
+    const p=parse(raw);exAddMsg('ai',p.reply);exHistory.push({role:'assistant',content:raw});
+    if(p.gap&&p.gap!=='null')exAddGap(p.gap);
+    if(p.strength&&p.strength!=='null')exAddStrength(p.strength);
+  }
+  document.getElementById('ex-input-ta').focus();
+  document.querySelector('.main').scrollTo(0,99999);
+}
+
+function exAddMsg(role,text){
+  const d=document.createElement('div');
+  d.className='msg '+(role==='ai'?'msg-ai':'msg-user');
+  d.innerHTML=`<span class="msg-role">${role==='ai'?'Examiner':'You'}</span><p class="msg-text">${esc(text)}</p>`;
+  document.getElementById('ex-messages').appendChild(d);
+}
+function exAddThinking(){
+  const d=document.createElement('div');d.id='ex-thinking';d.className='msg msg-ai';
+  d.innerHTML=`<span class="msg-role">Examiner</span><div class="thinking"><span class="dot" style="animation:throb 1.2s infinite;"></span><span class="dot" style="animation:throb 1.2s 0.2s infinite;"></span><span class="dot" style="animation:throb 1.2s 0.4s infinite;"></span></div>`;
+  document.getElementById('ex-messages').appendChild(d);
+  document.querySelector('.main').scrollTo(0,99999);
+}
+function exRemoveThinking(){const e=document.getElementById('ex-thinking');if(e)e.remove();}
+
+function exAddGap(text){
+  exGaps.push(text);
+  document.getElementById('ex-gaps-count').textContent=exGaps.length;
+  const ph=document.querySelector('#ex-gaps-list .panel-empty');if(ph)ph.remove();
+  const d=document.createElement('div');d.className='gap-item';
+  d.innerHTML=`<span class="gap-tag">Gap ${exGaps.length}</span>${esc(text)}`;
+  document.getElementById('ex-gaps-list').appendChild(d);
+}
+function exAddStrength(text){
+  exStrengths.push(text);
+  document.getElementById('ex-strengths-wrap').style.display='block';
+  const d=document.createElement('div');d.className='strength-item';
+  d.textContent=text;
+  document.getElementById('ex-strengths-list').appendChild(d);
+}
+
+async function generateExamReport(){
+  document.getElementById('ex-session').style.display='none';
+  document.getElementById('ex-report').style.display='block';
+  const rc=document.getElementById('ex-report-content');
+  rc.innerHTML='<p style="font-style:italic;color:var(--muted);">Compiling mastery report…</p>';
+  const prompt=`Based on this entire examination, write a concise mastery report: (1) Honest overall assessment, 2-3 sentences. (2) Specific areas of understanding demonstrated. (3) Knowledge gaps uncovered — reference precisely. (4) Recommended next study steps. End with a mastery score out of 10 with a one-sentence justification. Write in plain paragraphs. Be direct and honest.`;
+  const raw=await callAPI([...exHistory,{role:'user',content:prompt}],buildExamSystem(),800);
+  if(raw){
+    const clean=raw.replace(/<[^>]+>/g,'').trim();
+    rc.innerHTML='';
+    const scoreMatch=clean.match(/(\d+)\s*\/\s*10/);
+    if(scoreMatch){
+      const scoreBox=document.createElement('div');scoreBox.className='report-score';
+      scoreBox.innerHTML=`<span class="num">${scoreMatch[1]}</span><span class="denom">/10</span><span class="label">Mastery score</span>`;
+      rc.appendChild(scoreBox);
+    }
+    clean.split(/\n+/).filter(l=>l.trim()).forEach(line=>{
+      const p=document.createElement('p');
+      p.textContent=line.trim();
+      if(/^\d+[\.\)]/.test(line.trim()))p.className='heading';
+      rc.appendChild(p);
+    });
+  }
+}
+
+function resetExamine(){
+  exMaterial='';exHistory=[];exGaps=[];exStrengths=[];exExchanges=0;exLoading=false;
+  document.getElementById('ex-messages').innerHTML='';
+  document.getElementById('ex-gaps-list').innerHTML='<p class="panel-empty">None found yet…</p>';
+  document.getElementById('ex-strengths-list').innerHTML='';
+  document.getElementById('ex-strengths-wrap').style.display='none';
+  document.getElementById('ex-gaps-count').textContent='0';
+  document.getElementById('ex-exchanges').textContent='0';
+  document.getElementById('ex-report-btn').style.display='none';
+  document.getElementById('ex-material').value='';
+  document.getElementById('ex-chars').textContent='0 characters';
+  document.getElementById('ex-session').style.display='none';
+  document.getElementById('ex-report').style.display='none';
+  document.getElementById('ex-input').style.display='block';
+}
+
+// ─── TEACH MODE ────────────────────────────────────────────────
+let tcMaterial='',tcSections=[],tcIdx=0,tcHistory=[],tcNotes=[],tcLearnedCount=0,tcLoading=false;
+let tcRecognition=null,tcRecording=false;
+
+document.getElementById('tc-material').addEventListener('input',function(){
+  document.getElementById('tc-chars').textContent=this.value.length+' characters';
+});
+function clearTc(){document.getElementById('tc-material').value='';document.getElementById('tc-chars').textContent='0 characters';}
+function tcKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendTeachExplanation();}}
+
+function initTcSpeech(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const mic=document.getElementById('tc-mic');
+  const note=document.getElementById('tc-voice-note');
+  if(!SR){mic.disabled=true;note.textContent='Voice unavailable — use Chrome or Edge for voice input.';return;}
+  note.textContent='Tap mic → speak freely → tap again to submit.';
+  tcRecognition=new SR();
+  tcRecognition.continuous=true;tcRecognition.interimResults=true;tcRecognition.lang='en-US';
+  tcRecognition.onresult=e=>{
+    let final='',interim='';
+    for(let i=0;i<e.results.length;i++){if(e.results[i].isFinal)final+=e.results[i][0].transcript;else interim+=e.results[i][0].transcript;}
+    document.getElementById('tc-input-ta').value=final||interim;
+  };
+  tcRecognition.onerror=()=>tcStopRecording();
+  tcRecognition.onend=()=>{if(tcRecording)try{tcRecognition.start();}catch(e){}};
+}
+
+function tcToggleMic(){if(!tcRecognition)return;tcRecording?tcStopRecording():tcStartRecording();}
+function tcStartRecording(){
+  document.getElementById('tc-input-ta').value='';
+  tcRecognition.start();tcRecording=true;
+  document.getElementById('tc-mic').classList.add('on');
+  document.getElementById('tc-ripple').classList.add('on');
+  document.getElementById('tc-mic-lbl').textContent='Tap to stop & submit';
+  document.getElementById('tc-mic-lbl').classList.add('on');
+}
+function tcStopRecording(){
+  tcRecognition.stop();tcRecording=false;
+  document.getElementById('tc-mic').classList.remove('on');
+  document.getElementById('tc-ripple').classList.remove('on');
+  document.getElementById('tc-mic-lbl').textContent='Tap to speak';
+  document.getElementById('tc-mic-lbl').classList.remove('on');
+  setTimeout(()=>{if(document.getElementById('tc-input-ta').value.trim())sendTeachExplanation();},400);
+}
+
+async function beginTeach(){
+  tcMaterial=document.getElementById('tc-material').value.trim();
+  if(tcMaterial.length<60){document.getElementById('tc-err').style.display='block';return;}
+  document.getElementById('tc-err').style.display='none';
+  document.getElementById('tc-input').style.display='none';
+  document.getElementById('tc-preparing').style.display='block';
+  tcSections=await fetchSections()||['The core concept','Key mechanisms','Applications & implications'];
+  tcNotes=tcSections.map(()=>[]);tcIdx=0;tcHistory=[];tcLearnedCount=0;
+  document.getElementById('tc-preparing').style.display='none';
+  document.getElementById('tc-session').style.display='block';
+  initTcSpeech();tcRenderPills();
+  await tcOpenSection(0);
+}
+
+async function fetchSections(){
+  const raw=await callAPI([{role:'user',content:`Split this academic text into 3-5 logical teaching sections. Return ONLY a valid JSON array of short section title strings (3-6 words each). No markdown, no preamble.\n\nText:\n${tcMaterial}`}],null,200);
+  if(!raw)return null;
+  try{return JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){return null;}
+}
+
+function tcRenderPills(){
+  const c=document.getElementById('tc-pills');c.innerHTML='';
+  tcSections.forEach((s,i)=>{
+    const sp=document.createElement('span');
+    sp.className='spill'+(i<tcIdx?' done':i===tcIdx?' active':'');
+    sp.textContent=(i<tcIdx?'✓ ':i===tcIdx?'● ':'○ ')+s;
+    c.appendChild(sp);
+    if(i<tcSections.length-1){const a=document.createElement('span');a.textContent='→';a.style.cssText='color:var(--muted);font-size:11px;';c.appendChild(a);}
+  });
+}
+
+async function tcOpenSection(idx){
+  tcIdx=idx;tcHistory=[];
+  document.getElementById('tc-next-bar').classList.remove('on');
+  document.getElementById('tc-section-title').textContent=tcSections[idx];
+  document.getElementById('tc-subtitle').textContent=`Section ${idx+1} of ${tcSections.length}`;
+  document.getElementById('tc-progress').textContent=`${idx+1}/${tcSections.length}`;
+  document.getElementById('tc-skip-btn').style.display=idx<tcSections.length-1?'inline-flex':'none';
+  document.getElementById('tc-report-btn').style.display=idx===tcSections.length-1?'inline-flex':'none';
+  tcRenderPills();
+  const div=document.createElement('div');div.className='section-divider';
+  div.innerHTML=`<span>Section ${idx+1} — ${esc(tcSections[idx])}</span>`;
+  document.getElementById('tc-messages').appendChild(div);
+  tcAddThinking();
+  const raw=await callAPI([{role:'user',content:`Open section ${idx+1}. Greet the teacher and invite them to start explaining: "${tcSections[idx]}". 1-2 warm sentences. No questions yet.`}],tcBuildStudentSystem(true));
+  tcRemoveThinking();
+  if(raw){const p=parse(raw);tcAddMsg('ai',p.reply);tcHistory.push({role:'user',content:'Begin section.'},{role:'assistant',content:raw});}
+}
+
+function tcBuildStudentSystem(isOpening){
+  const done=tcSections.slice(0,tcIdx).join(', ');
+  if(isOpening)return `You are Lex, a warm curious undergraduate. Your peer is teaching you from this material:\n---\n${tcMaterial}\n---\nInvite them to explain section "${tcSections[tcIdx]}". 1-2 warm sentences. Do not mention format tags.`;
+  return `You are Lex, a warm but genuinely curious undergraduate learning from a peer teacher.
+Full material:\n---\n${tcMaterial}\n---\n${done?`Sections already taught: ${done}.`:''}\nCurrent section: "${tcSections[tcIdx]}"
+
+Rules:
+1. Ask ONE foundational question at a time if something is unclear
+2. Never quiz or challenge harshly — you're learning, not examining
+3. If the explanation covers this section well: briefly summarise what you now understand
+4. Keep responses short (1-4 sentences). Warm tone: "Oh I see…", "Hmm, could you clarify…"
+5. Do NOT ask about sections not yet being taught
+
+Format EXACTLY:
+<reply>Your response</reply>
+<status>questioning</status>
+<note>null</note>
+
+OR when you genuinely understand the section:
+<reply>Your brief summary + signal you're ready to move on</reply>
+<status>satisfied</status>
+<note>One sentence of what you learned, e.g. "Understood: cholesterol regulates bilayer fluidity at temperature extremes"</note>`;
+}
+
+async function sendTeachExplanation(){
+  if(tcLoading)return;
+  const ta=document.getElementById('tc-input-ta');
+  const text=ta.value.trim();if(!text)return;
+  ta.value='';tcLoading=true;
+  tcAddMsg('user',text);
+  tcHistory.push({role:'user',content:text});
+  tcAddThinking();
+  const raw=await callAPI(tcHistory,tcBuildStudentSystem(false),400);
+  tcRemoveThinking();tcLoading=false;
+  if(raw){
+    const p=parse(raw);tcAddMsg('ai',p.reply);tcHistory.push({role:'assistant',content:raw});
+    if(p.note&&p.note!=='null')tcAddNote(p.note);
+    if(p.status==='satisfied')tcShowNextBar();
+  }
+  document.querySelector('.main').scrollTo(0,99999);
+}
+
+function tcAddMsg(role,text){
+  const d=document.createElement('div');
+  d.className='msg '+(role==='ai'?'msg-ai':'msg-user');
+  d.innerHTML=`<span class="msg-role">${role==='ai'?'Student (Lex)':'You (teacher)'}</span><p class="msg-text">${esc(text)}</p>`;
+  document.getElementById('tc-messages').appendChild(d);
+}
+function tcAddThinking(){
+  const d=document.createElement('div');d.id='tc-thinking';d.className='msg msg-ai';
+  d.innerHTML=`<span class="msg-role">Student (Lex)</span><div class="thinking"><span class="dot" style="animation:throb 1.2s infinite;"></span><span class="dot" style="animation:throb 1.2s 0.2s infinite;"></span><span class="dot" style="animation:throb 1.2s 0.4s infinite;"></span></div>`;
+  document.getElementById('tc-messages').appendChild(d);
+  document.querySelector('.main').scrollTo(0,99999);
+}
+function tcRemoveThinking(){const e=document.getElementById('tc-thinking');if(e)e.remove();}
+
+function tcAddNote(text){
+  if(!text||text==='null')return;
+  tcNotes[tcIdx].push(text);tcLearnedCount++;
+  document.getElementById('tc-learned').textContent=tcLearnedCount;
+  const ph=document.querySelector('#tc-notes-list .panel-empty');if(ph)ph.remove();
+  const d=document.createElement('div');d.className='note-item';d.textContent=text;
+  document.getElementById('tc-notes-list').appendChild(d);
+}
+
+function tcShowNextBar(){
+  const bar=document.getElementById('tc-next-bar');bar.classList.add('on');
+  const isLast=tcIdx===tcSections.length-1;
+  document.getElementById('tc-next-label').textContent=isLast?'All sections complete — generate your report.':'Up next: '+tcSections[tcIdx+1];
+  const btn=document.getElementById('tc-next-btn');
+  if(isLast){btn.textContent='Generate report →';btn.onclick=generateTeachReport;}
+  else{btn.textContent='Next section →';btn.onclick=tcNextSection;}
+}
+
+async function tcNextSection(){if(tcIdx<tcSections.length-1)await tcOpenSection(tcIdx+1);else generateTeachReport();}
+function tcSkip(){if(tcIdx<tcSections.length-1)tcOpenSection(tcIdx+1);}
+
+async function generateTeachReport(){
+  document.getElementById('tc-session').style.display='none';
+  document.getElementById('tc-report').style.display='block';
+  const rc=document.getElementById('tc-report-content');
+  rc.innerHTML='<p style="font-style:italic;color:var(--muted);">Compiling teaching report…</p>';
+  const allNotes=tcNotes.map((n,i)=>`Section "${tcSections[i]}": ${n.length?n.join('; '):'not fully taught'}`).join('\n');
+  const covered=tcSections.filter((_,i)=>tcNotes[i].length>0).length;
+  const prompt=`A student just completed a "teach-back" session on this material:\n---\n${tcMaterial}\n---\nSections: ${tcSections.join(', ')}\nSections with demonstrated understanding: ${covered}/${tcSections.length}\nStudent learning notes:\n${allNotes}\n\nWrite a teaching quality report: (1) Overall assessment 2-3 sentences. (2) Sections communicated clearly. (3) Sections needing revisiting. (4) Two or three specific improvement suggestions. End with a teaching clarity score out of 10. Write in plain prose. Be direct and honest.`;
+  const raw=await callAPI([{role:'user',content:prompt}],null,800);
+  if(raw){
+    const clean=raw.trim();rc.innerHTML='';
+    const scoreMatch=clean.match(/(\d+)\s*\/\s*10/);
+    if(scoreMatch){
+      const sb=document.createElement('div');sb.className='report-score';
+      sb.innerHTML=`<span class="num">${scoreMatch[1]}</span><span class="denom">/10</span><span class="label">Teaching clarity</span>`;
+      rc.appendChild(sb);
+    }
+    clean.split(/\n+/).filter(l=>l.trim()).forEach(line=>{
+      const p=document.createElement('p');p.textContent=line.trim();
+      if(/^\d+[\.\)]/.test(line.trim()))p.className='heading';
+      rc.appendChild(p);
+    });
+  }
+}
+
+function resetTeach(){
+  if(tcRecording)tcStopRecording();
+  tcMaterial='';tcSections=[];tcIdx=0;tcHistory=[];tcNotes=[];tcLearnedCount=0;tcLoading=false;tcRecognition=null;
+  document.getElementById('tc-messages').innerHTML='';
+  document.getElementById('tc-notes-list').innerHTML='<p class="panel-empty">Lex will note what they learn…</p>';
+  document.getElementById('tc-pills').innerHTML='';
+  document.getElementById('tc-next-bar').classList.remove('on');
+  document.getElementById('tc-learned').textContent='0';
+  document.getElementById('tc-material').value='';
+  document.getElementById('tc-chars').textContent='0 characters';
+  document.getElementById('tc-session').style.display='none';
+  document.getElementById('tc-report').style.display='none';
+  document.getElementById('tc-preparing').style.display='none';
+  document.getElementById('tc-input').style.display='block';
+}
+</script>
+</body>
+</html>
