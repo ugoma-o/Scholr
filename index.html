@@ -451,16 +451,114 @@ async function callAPI(messages,system,maxTokens=800){
   const key=getKey();
   if(!key){alert('Please enter your Hugging Face API token in the sidebar.');return null;}
   const msgs=system?[{role:'system',content:system},...messages]:messages;
-  const r=await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',{
-    method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-    body:JSON.stringify({model:'mistralai/Mistral-7B-Instruct-v0.3',messages:msgs,max_tokens:maxTokens})
-  });
-  const d=await r.json();
-  if(!r.ok||d.error){alert('API error: '+(d.error?JSON.stringify(d.error):r.status));return null;}
-  if(!d.choices||!d.choices.length){alert('API error: No response from Hugging Face.');return null;}
-  return d.choices[0].message.content;
+  
+  try{
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+    
+    const r=await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+key
+      },
+      body:JSON.stringify({
+        model:'mistralai/Mistral-7B-Instruct-v0.3',
+        messages:msgs,
+        max_tokens:maxTokens,
+        temperature:0.7
+      }),
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if(!r.ok){
+      const errText = await r.text();
+      console.error('HF API error response:', r.status, errText);
+      alert(`API error ${r.status}: Check console for details`);
+      return null;
+    }
+    
+    const d=await r.json();
+    
+    if(d.error){
+      console.error('HF API returned error:', d.error);
+      alert('API error: '+JSON.stringify(d.error));
+      return null;
+    }
+    
+    if(!d.choices||!d.choices[0]||!d.choices[0].message){
+      console.error('Invalid API response structure:', d);
+      alert('API error: Invalid response structure');
+      return null;
+    }
+    
+    return d.choices[0].message.content;
+    
+  }catch(e){
+    if(e.name === 'AbortError'){
+      console.error('Request timeout');
+      alert('Request timeout — Hugging Face API taking too long. Try shorter material.');
+    } else {
+      console.error('Network error:', e);
+      alert('Network error: '+e.message);
+    }
+    return null;
+  }
 }
 
+async function fetchSections(){
+  console.log('fetchSections: Starting...');
+  const prompt = `You are an expert educator. Split this academic material into 3-4 clear teaching sections. Return ONLY a valid JSON array of section titles as strings (each 3-6 words). Example: ["Foundations","Core Mechanisms","Applications"]
+
+Material:
+${tcMaterial}`;
+
+  try{
+    const raw=await callAPI([{role:'user',content:prompt}], null, 400);
+    
+    if(!raw){
+      console.warn('fetchSections: API returned null');
+      return null;
+    }
+    
+    console.log('fetchSections: Raw response:', raw.substring(0, 200));
+    
+    // Try multiple parsing strategies
+    let cleaned = raw.trim();
+    
+    // Remove markdown code blocks
+    cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    // Extract JSON array if it's wrapped in text
+    const arrayMatch = cleaned.match(/\[.*\]/s);
+    if(arrayMatch){
+      cleaned = arrayMatch[0];
+    }
+    
+    console.log('fetchSections: Cleaned response:', cleaned.substring(0, 200));
+    
+    const parsed = JSON.parse(cleaned);
+    
+    if(!Array.isArray(parsed)){
+      console.warn('fetchSections: Parsed value is not an array:', parsed);
+      return null;
+    }
+    
+    if(parsed.length === 0){
+      console.warn('fetchSections: Array is empty');
+      return null;
+    }
+    
+    console.log('fetchSections: Success! Sections:', parsed);
+    return parsed;
+    
+  }catch(e){
+    console.error('fetchSections: Parse error:', e.message, 'Raw input:', raw);
+    return null;
+  }
+}
 function esc(t){const d=document.createElement('div');d.appendChild(document.createTextNode(t));return d.innerHTML;}
 function parse(raw){
   const get=tag=>{const m=raw.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));return m?m[1].trim():null;};
