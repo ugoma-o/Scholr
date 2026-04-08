@@ -13,7 +13,9 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-'https://router.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf/v1/chat/completions',        method: 'POST',
+'https://router.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf/v1/chat/completions',
+      {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
