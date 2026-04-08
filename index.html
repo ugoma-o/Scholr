@@ -434,16 +434,6 @@ const EXAMPLES = {
   hist:`The fall of the Western Roman Empire in 476 CE was not a sudden collapse but a gradual process spanning centuries. Historians debate its causes: Edward Gibbon famously attributed it to Christianity's pacifist influence, while modern scholars emphasize military pressures, economic strain, and political instability. The empire faced simultaneous barbarian invasions from Germanic tribes—Visigoths, Vandals, and Ostrogoths—who migrated into Roman territories seeking refuge and opportunity. Internal factors compounded these pressures: the cost of defending vast borders depleted the treasury, the plague of Cyprian reduced population and tax revenue, and political fragmentation weakened central authority. The Eastern Roman Empire, however, survived as the Byzantine Empire, suggesting that geography, economic resources, and adaptive governance—not cultural factors alone—determined survival.`
 };
 
-function getKey(){return document.getElementById('apiKeyInput').value.trim();}
-function saveKey(){
-  const k=getKey();
-  localStorage.setItem('scholr_key',k);
-  const s=document.getElementById('apiStatus');
-  if(k.startsWith('hf_')){s.textContent='● Key saved';s.style.color='#4ade80';}
-  else if(k.length>0){s.textContent='⚠ Check key format';s.style.color='#fbbf24';}
-  else{s.textContent='Not set';s.style.color='rgba(255,255,255,0.25)';}
-}
-(function(){const k=localStorage.getItem('scholr_key');if(k){document.getElementById('apiKeyInput').value=k;saveKey();}})();
 
 async function callAPI(messages, system, maxTokens=800) {
   // Build the message array with system prompt if provided
@@ -782,15 +772,49 @@ async function beginTeach(){
 }
 
 async function fetchSections(){
-  const prompt = `You are an expert educator. Split this academic material into 3-4 clear teaching sections. Return ONLY a valid JSON array of section titles as strings (each 3-6 words). Example: ["Foundations","Core Mechanisms","Real-world Applications"]\n\nMaterial:\n${tcMaterial}`;
-  const raw=await callAPI([{role:'user',content:prompt}], null, 600);
-  if(!raw)return null;
+  console.log('fetchSections: Starting...');
+  const prompt = `You are an expert educator. Split this academic material into 3-4 clear teaching sections. Return ONLY a valid JSON array of section titles as strings (each 3-6 words). Example: ["Foundations","Core Mechanisms","Applications"]
+
+Material:
+${tcMaterial}`;
+
   try{
-    const cleaned = raw.replace(/```json|```|[\n\r]/g,'').trim();
+    const raw=await callAPI([{role:'user',content:prompt}], null, 400);
+    
+    if(!raw){
+      console.warn('fetchSections: API returned null');
+      return null;
+    }
+    
+    console.log('fetchSections: Raw response:', raw.substring(0, 200));
+    
+    let cleaned = raw.trim();
+    cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    
+    const arrayMatch = cleaned.match(/\[.*\]/s);
+    if(arrayMatch){
+      cleaned = arrayMatch[0];
+    }
+    
+    console.log('fetchSections: Cleaned response:', cleaned.substring(0, 200));
+    
     const parsed = JSON.parse(cleaned);
-    return Array.isArray(parsed) ? parsed : null;
+    
+    if(!Array.isArray(parsed)){
+      console.warn('fetchSections: Parsed value is not an array:', parsed);
+      return null;
+    }
+    
+    if(parsed.length === 0){
+      console.warn('fetchSections: Array is empty');
+      return null;
+    }
+    
+    console.log('fetchSections: Success! Sections:', parsed);
+    return parsed;
+    
   }catch(e){
-    console.error('Section parsing failed:', e);
+    console.error('fetchSections: Parse error:', e.message, 'Raw input:', raw);
     return null;
   }
 }
