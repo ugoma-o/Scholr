@@ -691,9 +691,17 @@ async function beginTeach(){
 }
 
 async function fetchSections(){
-  const raw=await callAPI([{role:'user',content:`Split this academic text into 3-5 logical teaching sections. Return ONLY a valid JSON array of short section title strings (3-6 words each). No markdown, no explanations.`}],null);
+  const prompt = `You are an expert educator. Split this academic material into 3-4 clear teaching sections. Return ONLY a valid JSON array of section titles as strings (each 3-6 words). Example: ["Foundations","Core Mechanisms","Real-world Applications"]\n\nMaterial:\n${tcMaterial}`;
+  const raw=await callAPI([{role:'user',content:prompt}], null, 600);
   if(!raw)return null;
-  try{return JSON.parse(raw.replace(/```json|```/g,'').trim());}catch(e){return null;}
+  try{
+    const cleaned = raw.replace(/```json|```|[\n\r]/g,'').trim();
+    const parsed = JSON.parse(cleaned);
+    return Array.isArray(parsed) ? parsed : null;
+  }catch(e){
+    console.error('Section parsing failed:', e);
+    return null;
+  }
 }
 
 function tcRenderPills(){
@@ -757,7 +765,7 @@ async function sendTeachExplanation(){
   tcAddMsg('user',text);
   tcHistory.push({role:'user',content:text});
   tcAddThinking();
-  const raw=await callAPI(tcHistory,tcBuildStudentSystem(false),400);
+  const raw=await callAPI(tcHistory,tcBuildStudentSystem(false),600);
   tcRemoveThinking();tcLoading=false;
   if(raw){
     const p=parse(raw);tcAddMsg('ai',p.reply);tcHistory.push({role:'assistant',content:raw});
