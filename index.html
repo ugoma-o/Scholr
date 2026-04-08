@@ -456,8 +456,7 @@ async function callAPI(messages,system,maxTokens=800){
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
     
-    const r=await fetch('https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',{
-      method:'POST',
+const r=await fetch('https://api-inference.huggingface.co/models/TinyLlama/TinyLlama-1.1B-Chat-v1.0/v1/chat/completions',{      method:'POST',
       headers:{
         'Content-Type':'application/json',
         'Authorization':'Bearer '+key
