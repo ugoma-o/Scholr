@@ -13,8 +13,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',
-      {
+'https://router.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',      {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
