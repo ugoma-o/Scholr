@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-    'https://router.huggingface.co/hf-inference',
+      'https://router.huggingface.co/hf-inference/models/meta-llama/Llama-2-7b-chat-hf',
       {
         method: 'POST',
         headers: {
@@ -21,7 +21,6 @@ export default async function handler(req, res) {
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: 'meta-llama/Llama-2-7b-chat-hf',
           messages: messages,
           max_tokens: maxTokens,
           temperature: 0.7
