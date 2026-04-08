@@ -1,14 +1,8 @@
 {
-  "buildCommand": "echo 'No build needed'",
-  "outputDirectory": ".",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/:path*",
-      "destination": "/index.html"
+  "functions": {
+    "api/huggingface.js": {
+      "memory": 3008,
+      "maxDuration": 60
     }
-  ]
+  }
 }
