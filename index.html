@@ -196,11 +196,9 @@ textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
         New session
       </div>
     </nav>
-    <div class="sidebar-footer">
-      <label class="api-label">Hugging Face API token</label>
-      <input type="password" class="api-input" id="apiKeyInput" placeholder="hf_..." oninput="saveKey()">
-      <div class="api-status" id="apiStatus" style="color:rgba(255,255,255,0.25);">Not set</div>
-    </div>
+   <div class="sidebar-footer">
+  <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:rgba(255,255,255,0.3);padding:0 20px;">API configured on backend</div>
+</div>
   </aside>
 
   <main class="main">
@@ -447,61 +445,57 @@ function saveKey(){
 }
 (function(){const k=localStorage.getItem('scholr_key');if(k){document.getElementById('apiKeyInput').value=k;saveKey();}})();
 
-async function callAPI(messages,system,maxTokens=800){
-  const key=getKey();
-  if(!key){alert('Please enter your Hugging Face API token in the sidebar.');return null;}
-  const msgs=system?[{role:'system',content:system},...messages]:messages;
+async function callAPI(messages, system, maxTokens=800) {
+  // Build the message array with system prompt if provided
+  let msgs;
+  if (system) {
+    msgs = [{role: 'system', content: system}, ...messages];
+  } else {
+    msgs = messages;
+  }
   
-  try{
+  try {
+    // Create an abort controller for timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
     
-const r=await fetch('https://api-inference.huggingface.co/models/TinyLlama/TinyLlama-1.1B-Chat-v1.0/v1/chat/completions',{      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer '+key
+    // Call the Vercel API endpoint (not Hugging Face directly)
+    const response = await fetch('/api/huggingface', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      body:JSON.stringify({
-        model:'mistralai/Mistral-7B-Instruct-v0.3',
-        messages:msgs,
-        max_tokens:maxTokens,
-        temperature:0.7
+      body: JSON.stringify({
+        messages: msgs,
+        maxTokens: maxTokens
       }),
       signal: controller.signal
     });
     
+    // Clear the timeout
     clearTimeout(timeoutId);
     
-    if(!r.ok){
-      const errText = await r.text();
-      console.error('HF API error response:', r.status, errText);
-      alert(`API error ${r.status}: Check console for details`);
+    // Check if response is OK
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('API error:', errorData.error);
+      alert('API error: ' + errorData.error);
       return null;
     }
     
-    const d=await r.json();
+    // Parse the JSON response
+    const data = await response.json();
     
-    if(d.error){
-      console.error('HF API returned error:', d.error);
-      alert('API error: '+JSON.stringify(d.error));
-      return null;
-    }
+    // Return the content from the response
+    return data.content;
     
-    if(!d.choices||!d.choices[0]||!d.choices[0].message){
-      console.error('Invalid API response structure:', d);
-      alert('API error: Invalid response structure');
-      return null;
-    }
-    
-    return d.choices[0].message.content;
-    
-  }catch(e){
-    if(e.name === 'AbortError'){
+  } catch (error) {
+    if (error.name === 'AbortError') {
       console.error('Request timeout');
-      alert('Request timeout — Hugging Face API taking too long. Try shorter material.');
+      alert('Request timeout — try shorter material');
     } else {
-      console.error('Network error:', e);
-      alert('Network error: '+e.message);
+      console.error('Network error:', error);
+      alert('Network error: ' + error.message);
     }
     return null;
   }
