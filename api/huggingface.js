@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(
-'https://router.huggingface.co/models/meta-llama/Llama-2-7b-chat-hf/v1/chat/completions',
+'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3/v1/chat/completions',
       {
         method: 'POST',
         headers: {
