@@ -466,18 +466,35 @@ async function callAPI(messages, system, maxTokens=800) {
     clearTimeout(timeoutId);
     
     // Check if response is OK
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('API error:', errorData.error);
-      alert('API error: ' + errorData.error);
-      return null;
-    }
+   if (!response.ok) {
+  const errText = await response.text();
+
+  let errorMessage = errText;
+  try {
+    const parsed = JSON.parse(errText);
+    errorMessage = parsed.error || JSON.stringify(parsed);
+  } catch (_) {
+    // Response was not JSON, keep raw text
+  }
+
+  console.error('API error:', response.status, errorMessage);
+  alert('API error: ' + errorMessage);
+  return null;
+}
     
     // Parse the JSON response
-    const data = await response.json();
-    
-    // Return the content from the response
-    return data.content;
+const responseText = await response.text();
+
+let data;
+try {
+  data = JSON.parse(responseText);
+} catch (e) {
+  console.error('Non-JSON response:', responseText);
+  alert('API returned non-JSON response. Check Vercel function logs.');
+  return null;
+}
+
+return data.content;
     
   } catch (error) {
     if (error.name === 'AbortError') {
