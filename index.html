@@ -450,7 +450,7 @@ async function callAPI(messages, system, maxTokens=800) {
     const timeoutId = setTimeout(() => controller.abort(), 45000);
     
     // Call the Vercel API endpoint (not Hugging Face directly)
-    const response = await fetch('/api/huggingface', {
+    const response = await fetch('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
