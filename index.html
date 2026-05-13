@@ -560,22 +560,34 @@ ${tcMaterial}`;
   }
 }
 function esc(t){const d=document.createElement('div');d.appendChild(document.createTextNode(t));return d.innerHTML;}
-function parse(raw){
-  const get=tag=>{
-    const m=raw.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`));
+function parse(raw) {
+  const get = tag => {
+    const m = raw.match(new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i'));
     return m ? m[1].trim() : null;
   };
 
+  const stripTags = text => {
+    return text
+      .replace(/<gap>[\s\S]*?<\/gap>/gi, '')
+      .replace(/<strength>[\s\S]*?<\/strength>/gi, '')
+      .replace(/<coverage>[\s\S]*?<\/coverage>/gi, '')
+      .replace(/<status>[\s\S]*?<\/status>/gi, '')
+      .replace(/<note>[\s\S]*?<\/note>/gi, '')
+      .replace(/<missing>[\s\S]*?<\/missing>/gi, '')
+      .replace(/<\/?reply>/gi, '')
+      .trim();
+  };
+
   return {
-    reply: get('reply') || raw.trim(),
+    reply: get('reply') || stripTags(raw),
     status: get('status') || 'questioning',
     gap: get('gap'),
     strength: get('strength'),
     note: get('note'),
-    coverage: get('coverage')
+    coverage: get('coverage'),
+    missing: get('missing')
   };
 }
-
 function showView(id){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.getElementById('view-'+id).classList.add('active');
