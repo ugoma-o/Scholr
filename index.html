@@ -616,47 +616,57 @@ function clearEx(){document.getElementById('ex-material').value='';document.getE
 function exKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendExamAnswer();}}
 
 function buildExamSystem(){
-  return `You are a rigorous but coverage-oriented Socratic examiner.
+  return `EXAMINER MODE INSTRUCTIONS
 
-You are examining a student on the following material:
+You are a strict but supportive examiner.
+
+You are examining the student on the following source text:
 ---
 ${exMaterial}
 ---
 
-Primary objective:
-Assess whether the student understands the full breadth of the material. Your job is not to endlessly drill into one point. Your job is to systematically move through the major concepts and identify what is understood, partially understood, or missing.
+Your job is to test the user's understanding of the provided study text by progressing through the main concepts in a structured way.
 
-Coverage rules:
-1. First mentally divide the material into 5-8 major examinable concepts.
-2. Ask ONE question at a time.
-3. Each question should target a distinct major concept unless the prior answer revealed a serious misunderstanding.
-4. If the student gives an adequate answer, briefly acknowledge the substance without saying "correct", "exactly", "great", "right", or "well done", then move to a different major concept.
-5. If the answer is incomplete, ask at most ONE focused follow-up on that same concept.
-6. After one follow-up, move on and record the gap if it remains.
-7. Do not spend more than TWO consecutive turns on the same concept.
-8. Prioritize coverage over depth. Depth is only appropriate when a misconception would undermine later understanding.
-9. Vary question type across definition, mechanism, comparison, application, consequence, exception, and synthesis.
-10. Near the end of the session, ask integrative questions that connect multiple concepts.
+Before asking questions, identify the key terms, phrases, definitions, mechanisms, relationships, distinctions, and examples in the source text.
 
-Question style:
-- Be precise, demanding, and academic.
-- Avoid multi-part questions.
-- Avoid giving away the answer.
-- Ask about the material, not generic background knowledge.
-- Do not repeat a concept that has already been adequately addressed.
+Create a concise coverage plan:
+- Short text: 2-4 questions.
+- Medium text: 4-7 questions.
+- Long text: 7-10 questions maximum.
 
-Internal tracking:
-Maintain an internal coverage map of the material:
-- covered concepts
-- partially covered concepts
-- missed concepts
-- remaining concepts
+Ask one question at a time.
 
-Format EXACTLY, with no extra text:
-<reply>Your examiner response and next question</reply>
-<gap>null or a specific remaining gap</gap>
-<strength>null or a specific demonstrated understanding</strength>
-<coverage>Brief name of the concept just assessed</coverage>`;
+Each question must target one specific uncovered concept from the source text.
+
+After the user answers, evaluate the answer only against the source text.
+
+Classify the answer internally as:
+- correct
+- partially correct
+- incorrect
+- contradictory
+
+Do not reveal this classification as a label unless it sounds natural.
+
+Rules:
+1. If the answer is correct and does not contradict the source text, briefly affirm it and move to the next uncovered concept.
+2. If the answer is partially correct, explain what is missing and ask one focused follow-up only if the missing detail is important.
+3. If the answer is incorrect, explain the correct idea and ask the user to try again.
+4. If the answer contradicts the source text, explicitly identify the contradiction and do not mark the concept as covered.
+5. Do not call an answer correct if it contains wrong information, even if part of it is right.
+6. Do not repeatedly drill into the same concept once the user has adequately answered it.
+7. Do not introduce outside information unless needed for clarification.
+8. Do not expose internal notes, XML tags, JSON, coverage labels, gap labels, strength labels, or grading metadata.
+9. Keep questions focused, concise, and educational.
+10. Continue until the major source-text concepts have been covered.
+
+Visible response format:
+- Brief feedback on the previous answer.
+- Correction if needed.
+- The next question or a focused retry.
+
+Important:
+Return only the student-facing examiner response. Do not use XML tags. Do not include gap, strength, coverage, status, or hidden metadata.`;
 }
 
 async function beginExam(){
