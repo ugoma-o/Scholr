@@ -292,7 +292,12 @@ textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
             <div class="chat-input-area">
               <span class="chat-input-label">Your answer — Enter to submit</span>
               <textarea class="chat-ta" id="ex-input-ta" rows="3" placeholder="Answer the examiner's question…" onkeydown="exKey(event)"></textarea>
-              <div class="chat-input-footer">
+
+<p id="ex-voice-note" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;">
+  Hold Ctrl to speak. Release Ctrl to stop.
+</p>
+
+<div class="chat-input-footer">
                 <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">Shift+Enter for new line</span>
                 <button class="btn btn-primary" onclick="sendExamAnswer()">Submit →</button>
               </div>
@@ -607,14 +612,102 @@ function loadEx(mode,key){
 }
 
 let exMaterial='',exHistory=[],exGaps=[],exStrengths=[],exExchanges=0,exLoading=false;
-
+let exRecognition=null,exRecording=false,exCtrlHeld=false,exFinalTranscript='';
 document.getElementById('ex-material').addEventListener('input',function(){
   document.getElementById('ex-chars').textContent=this.value.length+' characters';
 });
 function clearEx(){document.getElementById('ex-material').value='';document.getElementById('ex-chars').textContent='0 characters';}
 
 function exKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendExamAnswer();}}
+function initExSpeech(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const note = document.getElementById('ex-voice-note');
 
+  if(!SR){
+    if(note) note.textContent = 'Voice unavailable — use Chrome or Edge for voice input.';
+    return;
+  }
+
+  exRecognition = new SR();
+  exRecognition.continuous = true;
+  exRecognition.interimResults = true;
+  exRecognition.lang = 'en-US';
+
+  exRecognition.onresult = e => {
+    let interim = '';
+
+    for(let i = e.resultIndex; i < e.results.length; i++){
+      const transcript = e.results[i][0].transcript;
+
+      if(e.results[i].isFinal){
+        exFinalTranscript += transcript + ' ';
+      } else {
+        interim += transcript;
+      }
+    }
+
+    const ta = document.getElementById('ex-input-ta');
+    ta.value = (exFinalTranscript + interim).trim();
+  };
+
+  exRecognition.onerror = e => {
+    console.error('Exam speech recognition error:', e.error);
+    exStopRecording(false);
+  };
+
+  exRecognition.onend = () => {
+    if(exRecording && exCtrlHeld){
+      try {
+        exRecognition.start();
+      } catch(e) {}
+    }
+  };
+}
+
+function exStartRecording(){
+  if(!exRecognition || exRecording || exLoading) return;
+
+  const ta = document.getElementById('ex-input-ta');
+  const note = document.getElementById('ex-voice-note');
+
+  exFinalTranscript = ta.value.trim();
+  if(exFinalTranscript) exFinalTranscript += ' ';
+
+  try {
+    exRecognition.start();
+    exRecording = true;
+    if(note){
+      note.textContent = 'Listening… release Ctrl to stop.';
+      note.style.color = 'var(--danger)';
+    }
+  } catch(e) {
+    console.warn('Could not start exam speech recognition:', e);
+  }
+}
+
+function exStopRecording(shouldSubmit = false){
+  if(!exRecognition || !exRecording) return;
+
+  exRecording = false;
+
+  try {
+    exRecognition.stop();
+  } catch(e) {}
+
+  const note = document.getElementById('ex-voice-note');
+  if(note){
+    note.textContent = 'Hold Ctrl to speak. Release Ctrl to stop.';
+    note.style.color = 'var(--muted)';
+  }
+
+  if(shouldSubmit){
+    setTimeout(() => {
+      const text = document.getElementById('ex-input-ta').value.trim();
+      if(text) sendExamAnswer();
+    }, 250);
+  }
+}
+  
 function buildExamSystem(){
   return `EXAMINER MODE INSTRUCTIONS
 
@@ -774,6 +867,12 @@ function resetExamine(){
   document.getElementById('ex-session').style.display='none';
   document.getElementById('ex-report').style.display='none';
   document.getElementById('ex-input').style.display='block';
+
+  if(exRecognition) exRecognition.abort();
+exRecognition=null;
+exRecording=false;
+exCtrlHeld=false;
+exFinalTranscript='';
 }
 
 let tcMaterial='',tcSections=[],tcIdx=0,tcHistory=[],tcNotes=[],tcLearnedCount=0,tcLoading=false;
@@ -1064,6 +1163,33 @@ function resetTeach(){
   if(tcRecognition)tcRecognition.abort();
   tcRecognition=null;
 }
+  document.addEventListener('keydown', e => {
+  const examineActive = document.getElementById('ex-session')?.style.display === 'block';
+
+  if(!examineActive) return;
+  if(e.key !== 'Control') return;
+  if(exCtrlHeld) return;
+
+  exCtrlHeld = true;
+  exStartRecording();
+});
+
+document.addEventListener('keyup', e => {
+  const examineActive = document.getElementById('ex-session')?.style.display === 'block';
+
+  if(e.key !== 'Control') return;
+
+  exCtrlHeld = false;
+
+  if(examineActive){
+    exStopRecording(true);
+  }
+});
+
+window.addEventListener('blur', () => {
+  exCtrlHeld = false;
+  exStopRecording(false);
+});
 </script>
 </body>
 </html>
