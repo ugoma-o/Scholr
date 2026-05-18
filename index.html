@@ -613,25 +613,49 @@ function loadEx(mode,key){
 
 let exMaterial='',exHistory=[],exGaps=[],exStrengths=[],exExchanges=0,exLoading=false;
 let exRecognition=null,exRecording=false,exCtrlHeld=false,exFinalTranscript='';
+
 document.getElementById('ex-material').addEventListener('input',function(){
   document.getElementById('ex-chars').textContent=this.value.length+' characters';
 });
-function clearEx(){document.getElementById('ex-material').value='';document.getElementById('ex-chars').textContent='0 characters';}
 
-function exKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendExamAnswer();}}
+function clearEx(){
+  document.getElementById('ex-material').value='';
+  document.getElementById('ex-chars').textContent='0 characters';
+}
+
+function exKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    sendExamAnswer();
+  }
+}
+
 function initExSpeech(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const note = document.getElementById('ex-voice-note');
 
   if(!SR){
-    if(note) note.textContent = 'Voice unavailable — use Chrome or Edge for voice input.';
+    if(note){
+      note.textContent = 'Voice unavailable in this browser. Use Chrome or Edge for Ctrl-to-speak.';
+      note.style.color = 'var(--danger)';
+    }
+    console.warn('SpeechRecognition is not supported in this browser.');
     return;
+  }
+
+  if(exRecognition){
+    try { exRecognition.abort(); } catch(e) {}
   }
 
   exRecognition = new SR();
   exRecognition.continuous = true;
   exRecognition.interimResults = true;
   exRecognition.lang = 'en-US';
+
+  if(note){
+    note.textContent = 'Hold Ctrl to speak. Release Ctrl to stop.';
+    note.style.color = 'var(--muted)';
+  }
 
   exRecognition.onresult = e => {
     let interim = '';
@@ -676,8 +700,9 @@ function exStartRecording(){
   try {
     exRecognition.start();
     exRecording = true;
+
     if(note){
-      note.textContent = 'Listening… release Ctrl to stop.';
+      note.textContent = 'Listening... release Ctrl to stop.';
       note.style.color = 'var(--danger)';
     }
   } catch(e) {
@@ -695,6 +720,7 @@ function exStopRecording(shouldSubmit = false){
   } catch(e) {}
 
   const note = document.getElementById('ex-voice-note');
+
   if(note){
     note.textContent = 'Hold Ctrl to speak. Release Ctrl to stop.';
     note.style.color = 'var(--muted)';
@@ -704,7 +730,7 @@ function exStopRecording(shouldSubmit = false){
     setTimeout(() => {
       const text = document.getElementById('ex-input-ta').value.trim();
       if(text) sendExamAnswer();
-    }, 250);
+    }, 400);
   }
 }
   
@@ -764,16 +790,35 @@ Return only the student-facing examiner response. Do not use XML tags. Do not in
 
 async function beginExam(){
   exMaterial=document.getElementById('ex-material').value.trim();
-  if(exMaterial.length<60){document.getElementById('ex-err').style.display='block';return;}
+
+  if(exMaterial.length<60){
+    document.getElementById('ex-err').style.display='block';
+    return;
+  }
+
   document.getElementById('ex-err').style.display='none';
   document.getElementById('ex-input').style.display='none';
   document.getElementById('ex-session').style.display='block';
   document.getElementById('ex-topic').textContent=exMaterial.substring(0,70)+'…';
-  exHistory=[];exGaps=[];exStrengths=[];exExchanges=0;
+
+  initExSpeech();
+
+  exHistory=[];
+  exGaps=[];
+  exStrengths=[];
+  exExchanges=0;
+
   exAddThinking();
+
   const raw=await callAPI([{role:'user',content:'Begin the examination.'}],buildExamSystem());
+
   exRemoveThinking();
-  if(raw){const p=parse(raw);exAddMsg('ai',p.reply);exHistory.push({role:'user',content:'Begin.'},{role:'assistant',content:raw});}
+
+  if(raw){
+    const p=parse(raw);
+    exAddMsg('ai',p.reply);
+    exHistory.push({role:'user',content:'Begin.'},{role:'assistant',content:raw});
+  }
 }
 
 async function sendExamAnswer(){
@@ -854,7 +899,13 @@ async function generateExamReport(){
 }
 
 function resetExamine(){
-  exMaterial='';exHistory=[];exGaps=[];exStrengths=[];exExchanges=0;exLoading=false;
+  exMaterial='';
+  exHistory=[];
+  exGaps=[];
+  exStrengths=[];
+  exExchanges=0;
+  exLoading=false;
+
   document.getElementById('ex-messages').innerHTML='';
   document.getElementById('ex-gaps-list').innerHTML='<p class="panel-empty">None found yet…</p>';
   document.getElementById('ex-strengths-list').innerHTML='';
@@ -868,11 +919,20 @@ function resetExamine(){
   document.getElementById('ex-report').style.display='none';
   document.getElementById('ex-input').style.display='block';
 
-  if(exRecognition) exRecognition.abort();
-exRecognition=null;
-exRecording=false;
-exCtrlHeld=false;
-exFinalTranscript='';
+  if(exRecognition){
+    try { exRecognition.abort(); } catch(e) {}
+  }
+
+  exRecognition=null;
+  exRecording=false;
+  exCtrlHeld=false;
+  exFinalTranscript='';
+
+  const note = document.getElementById('ex-voice-note');
+  if(note){
+    note.textContent='Hold Ctrl to speak. Release Ctrl to stop.';
+    note.style.color='var(--muted)';
+  }
 }
 
 let tcMaterial='',tcSections=[],tcIdx=0,tcHistory=[],tcNotes=[],tcLearnedCount=0,tcLoading=false;
@@ -1163,12 +1223,14 @@ function resetTeach(){
   if(tcRecognition)tcRecognition.abort();
   tcRecognition=null;
 }
-  document.addEventListener('keydown', e => {
+ document.addEventListener('keydown', e => {
   const examineActive = document.getElementById('ex-session')?.style.display === 'block';
 
   if(!examineActive) return;
   if(e.key !== 'Control') return;
   if(exCtrlHeld) return;
+
+  e.preventDefault();
 
   exCtrlHeld = true;
   exStartRecording();
@@ -1178,6 +1240,8 @@ document.addEventListener('keyup', e => {
   const examineActive = document.getElementById('ex-session')?.style.display === 'block';
 
   if(e.key !== 'Control') return;
+
+  e.preventDefault();
 
   exCtrlHeld = false;
 
