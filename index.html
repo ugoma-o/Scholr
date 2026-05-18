@@ -613,49 +613,25 @@ function loadEx(mode,key){
 
 let exMaterial='',exHistory=[],exGaps=[],exStrengths=[],exExchanges=0,exLoading=false;
 let exRecognition=null,exRecording=false,exCtrlHeld=false,exFinalTranscript='';
-
 document.getElementById('ex-material').addEventListener('input',function(){
   document.getElementById('ex-chars').textContent=this.value.length+' characters';
 });
+function clearEx(){document.getElementById('ex-material').value='';document.getElementById('ex-chars').textContent='0 characters';}
 
-function clearEx(){
-  document.getElementById('ex-material').value='';
-  document.getElementById('ex-chars').textContent='0 characters';
-}
-
-function exKey(e){
-  if(e.key==='Enter'&&!e.shiftKey){
-    e.preventDefault();
-    sendExamAnswer();
-  }
-}
-
+function exKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendExamAnswer();}}
 function initExSpeech(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const note = document.getElementById('ex-voice-note');
 
   if(!SR){
-    if(note){
-      note.textContent = 'Voice unavailable in this browser. Use Chrome or Edge for Ctrl-to-speak.';
-      note.style.color = 'var(--danger)';
-    }
-    console.warn('SpeechRecognition is not supported in this browser.');
+    if(note) note.textContent = 'Voice unavailable — use Chrome or Edge for voice input.';
     return;
-  }
-
-  if(exRecognition){
-    try { exRecognition.abort(); } catch(e) {}
   }
 
   exRecognition = new SR();
   exRecognition.continuous = true;
   exRecognition.interimResults = true;
   exRecognition.lang = 'en-US';
-
-  if(note){
-    note.textContent = 'Hold Ctrl to speak. Release Ctrl to stop.';
-    note.style.color = 'var(--muted)';
-  }
 
   exRecognition.onresult = e => {
     let interim = '';
@@ -700,9 +676,8 @@ function exStartRecording(){
   try {
     exRecognition.start();
     exRecording = true;
-
     if(note){
-      note.textContent = 'Listening... release Ctrl to stop.';
+      note.textContent = 'Listening… release Ctrl to stop.';
       note.style.color = 'var(--danger)';
     }
   } catch(e) {
@@ -720,7 +695,6 @@ function exStopRecording(shouldSubmit = false){
   } catch(e) {}
 
   const note = document.getElementById('ex-voice-note');
-
   if(note){
     note.textContent = 'Hold Ctrl to speak. Release Ctrl to stop.';
     note.style.color = 'var(--muted)';
@@ -730,7 +704,7 @@ function exStopRecording(shouldSubmit = false){
     setTimeout(() => {
       const text = document.getElementById('ex-input-ta').value.trim();
       if(text) sendExamAnswer();
-    }, 400);
+    }, 250);
   }
 }
   
@@ -744,11 +718,11 @@ You are examining the student on the following source text:
 ${exMaterial}
 ---
 
-Your job is to test the user's understanding of the provided study text by progressing through the main concepts in a structured way.
+Your job is to test the user's understanding of the source text by progressing through the main concepts in a structured way.
 
 Before asking questions, identify the key terms, phrases, definitions, mechanisms, relationships, distinctions, and examples in the source text.
 
-Create a concise coverage plan:
+Create a concise internal coverage plan:
 - Short text: 2-4 questions.
 - Medium text: 4-7 questions.
 - Long text: 7-10 questions maximum.
@@ -765,8 +739,6 @@ Classify the answer internally as:
 - incorrect
 - contradictory
 
-Do not reveal this classification as a label unless it sounds natural.
-
 Rules:
 1. If the answer is correct and does not contradict the source text, briefly affirm it and move to the next uncovered concept.
 2. If the answer is partially correct, explain what is missing and ask one focused follow-up only if the missing detail is important.
@@ -775,70 +747,85 @@ Rules:
 5. Do not call an answer correct if it contains wrong information, even if part of it is right.
 6. Do not repeatedly drill into the same concept once the user has adequately answered it.
 7. Do not introduce outside information unless needed for clarification.
-8. Do not expose internal notes, XML tags, JSON, coverage labels, gap labels, strength labels, or grading metadata.
-9. Keep questions focused, concise, and educational.
-10. Continue until the major source-text concepts have been covered.
+8. Keep questions focused, concise, and educational.
+9. Continue until the major source-text concepts have been covered.
+10. When all major source-text concepts have been addressed, end the examination instead of asking another question.
 
-Visible response format:
-- Brief feedback on the previous answer.
-- Correction if needed.
-- The next question or a focused retry.
+Completion rule:
+If all major concepts have been sufficiently addressed, your visible reply should say that the examination is complete and briefly summarize the student's performance.
 
-Important:
-Return only the student-facing examiner response. Do not use XML tags. Do not include gap, strength, coverage, status, or hidden metadata.`;
+Format EXACTLY:
+
+<reply>Your student-facing examiner response. If continuing, include the next question. If complete, say the examination is complete.</reply>
+<status>questioning</status>
+
+OR, when all major concepts have been addressed:
+
+<reply>The examination is complete. Briefly summarize what the student demonstrated and mention that they can generate the report.</reply>
+<status>complete</status>
+
+Do not include any other tags.`;
 }
 
 async function beginExam(){
   exMaterial=document.getElementById('ex-material').value.trim();
-
-  if(exMaterial.length<60){
-    document.getElementById('ex-err').style.display='block';
-    return;
-  }
-
+  if(exMaterial.length<60){document.getElementById('ex-err').style.display='block';return;}
   document.getElementById('ex-err').style.display='none';
   document.getElementById('ex-input').style.display='none';
   document.getElementById('ex-session').style.display='block';
   document.getElementById('ex-topic').textContent=exMaterial.substring(0,70)+'…';
-
-  initExSpeech();
-
-  exHistory=[];
-  exGaps=[];
-  exStrengths=[];
-  exExchanges=0;
-
+  exHistory=[];exGaps=[];exStrengths=[];exExchanges=0;
   exAddThinking();
-
   const raw=await callAPI([{role:'user',content:'Begin the examination.'}],buildExamSystem());
-
   exRemoveThinking();
-
-  if(raw){
-    const p=parse(raw);
-    exAddMsg('ai',p.reply);
-    exHistory.push({role:'user',content:'Begin.'},{role:'assistant',content:raw});
-  }
+  if(raw){const p=parse(raw);exAddMsg('ai',p.reply);exHistory.push({role:'user',content:'Begin.'},{role:'assistant',content:raw});}
 }
 
 async function sendExamAnswer(){
   if(exLoading)return;
+
   const ta=document.getElementById('ex-input-ta');
-  const text=ta.value.trim();if(!text)return;
-  ta.value='';exLoading=true;
+  const text=ta.value.trim();
+  if(!text)return;
+
+  ta.value='';
+  exLoading=true;
+
   exAddMsg('user',text);
   exHistory.push({role:'user',content:text});
+
   exExchanges++;
   document.getElementById('ex-exchanges').textContent=exExchanges;
-  if(exExchanges>=4)document.getElementById('ex-report-btn').style.display='inline-flex';
+
   exAddThinking();
+
   const raw=await callAPI(exHistory,buildExamSystem());
-  exRemoveThinking();exLoading=false;
+
+  exRemoveThinking();
+  exLoading=false;
+
   if(raw){
-    const p=parse(raw);exAddMsg('ai',p.reply);exHistory.push({role:'assistant',content:raw});
+    const p=parse(raw);
+
+    exAddMsg('ai',p.reply);
+    exHistory.push({role:'assistant',content:raw});
+
     if(p.gap&&p.gap!=='null')exAddGap(p.gap);
     if(p.strength&&p.strength!=='null')exAddStrength(p.strength);
+
+    if(p.status==='complete'){
+      document.getElementById('ex-report-btn').style.display='inline-flex';
+      document.getElementById('ex-input-ta').disabled=true;
+      document.getElementById('ex-input-ta').placeholder='Examination complete. Generate your report.';
+      document.querySelector('.main').scrollTo(0,99999);
+      return;
+    }
   }
+
+  if(exExchanges>=4){
+    document.getElementById('ex-report-btn').style.display='inline-flex';
+  }
+
   document.getElementById('ex-input-ta').focus();
   document.querySelector('.main').scrollTo(0,99999);
 }
@@ -918,6 +905,10 @@ function resetExamine(){
   document.getElementById('ex-session').style.display='none';
   document.getElementById('ex-report').style.display='none';
   document.getElementById('ex-input').style.display='block';
+
+  document.getElementById('ex-input-ta').disabled=false;
+  document.getElementById('ex-input-ta').placeholder='Answer the examiner\'s question…';
+  document.getElementById('ex-input-ta').value='';
 
   if(exRecognition){
     try { exRecognition.abort(); } catch(e) {}
@@ -1223,14 +1214,12 @@ function resetTeach(){
   if(tcRecognition)tcRecognition.abort();
   tcRecognition=null;
 }
- document.addEventListener('keydown', e => {
+  document.addEventListener('keydown', e => {
   const examineActive = document.getElementById('ex-session')?.style.display === 'block';
 
   if(!examineActive) return;
   if(e.key !== 'Control') return;
   if(exCtrlHeld) return;
-
-  e.preventDefault();
 
   exCtrlHeld = true;
   exStartRecording();
@@ -1240,8 +1229,6 @@ document.addEventListener('keyup', e => {
   const examineActive = document.getElementById('ex-session')?.style.display === 'block';
 
   if(e.key !== 'Control') return;
-
-  e.preventDefault();
 
   exCtrlHeld = false;
 
