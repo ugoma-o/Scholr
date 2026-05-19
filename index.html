@@ -294,7 +294,7 @@ textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
               <textarea class="chat-ta" id="ex-input-ta" rows="3" placeholder="Answer the examiner's question…" onkeydown="exKey(event)"></textarea>
 
 <p id="ex-voice-note" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:6px;">
-  Hold Ctrl to speak. Release Ctrl to stop.
+  Hold Ctrl to speak. Release Ctrl to submit.
 </p>
 
 <div class="chat-input-footer">
@@ -613,25 +613,49 @@ function loadEx(mode,key){
 
 let exMaterial='',exHistory=[],exGaps=[],exStrengths=[],exExchanges=0,exLoading=false;
 let exRecognition=null,exRecording=false,exCtrlHeld=false,exFinalTranscript='';
+
 document.getElementById('ex-material').addEventListener('input',function(){
   document.getElementById('ex-chars').textContent=this.value.length+' characters';
 });
-function clearEx(){document.getElementById('ex-material').value='';document.getElementById('ex-chars').textContent='0 characters';}
 
-function exKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendExamAnswer();}}
+function clearEx(){
+  document.getElementById('ex-material').value='';
+  document.getElementById('ex-chars').textContent='0 characters';
+}
+
+function exKey(e){
+  if(e.key==='Enter'&&!e.shiftKey){
+    e.preventDefault();
+    sendExamAnswer();
+  }
+}
+
 function initExSpeech(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const note = document.getElementById('ex-voice-note');
 
   if(!SR){
-    if(note) note.textContent = 'Voice unavailable — use Chrome or Edge for voice input.';
+    if(note){
+      note.textContent = 'Voice input is unavailable in this browser. Use Chrome or Edge.';
+      note.style.color = 'var(--danger)';
+    }
+    console.warn('SpeechRecognition is not supported in this browser.');
     return;
+  }
+
+  if(exRecognition){
+    try { exRecognition.abort(); } catch(e) {}
   }
 
   exRecognition = new SR();
   exRecognition.continuous = true;
   exRecognition.interimResults = true;
   exRecognition.lang = 'en-US';
+
+  if(note){
+    note.textContent = 'Hold Ctrl to speak. Release Ctrl to submit.';
+    note.style.color = 'var(--muted)';
+  }
 
   exRecognition.onresult = e => {
     let interim = '';
@@ -647,7 +671,9 @@ function initExSpeech(){
     }
 
     const ta = document.getElementById('ex-input-ta');
-    ta.value = (exFinalTranscript + interim).trim();
+    if(ta){
+      ta.value = (exFinalTranscript + interim).trim();
+    }
   };
 
   exRecognition.onerror = e => {
@@ -657,9 +683,7 @@ function initExSpeech(){
 
   exRecognition.onend = () => {
     if(exRecording && exCtrlHeld){
-      try {
-        exRecognition.start();
-      } catch(e) {}
+      try { exRecognition.start(); } catch(e) {}
     }
   };
 }
@@ -670,14 +694,15 @@ function exStartRecording(){
   const ta = document.getElementById('ex-input-ta');
   const note = document.getElementById('ex-voice-note');
 
-  exFinalTranscript = ta.value.trim();
+  exFinalTranscript = ta ? ta.value.trim() : '';
   if(exFinalTranscript) exFinalTranscript += ' ';
 
   try {
     exRecognition.start();
     exRecording = true;
+
     if(note){
-      note.textContent = 'Listening… release Ctrl to stop.';
+      note.textContent = 'Listening... release Ctrl to submit.';
       note.style.color = 'var(--danger)';
     }
   } catch(e) {
@@ -690,24 +715,23 @@ function exStopRecording(shouldSubmit = false){
 
   exRecording = false;
 
-  try {
-    exRecognition.stop();
-  } catch(e) {}
+  try { exRecognition.stop(); } catch(e) {}
 
   const note = document.getElementById('ex-voice-note');
   if(note){
-    note.textContent = 'Hold Ctrl to speak. Release Ctrl to stop.';
+    note.textContent = 'Hold Ctrl to speak. Release Ctrl to submit.';
     note.style.color = 'var(--muted)';
   }
 
   if(shouldSubmit){
     setTimeout(() => {
-      const text = document.getElementById('ex-input-ta').value.trim();
+      const ta = document.getElementById('ex-input-ta');
+      const text = ta ? ta.value.trim() : '';
       if(text) sendExamAnswer();
-    }, 250);
+    }, 400);
   }
 }
-  
+
 function buildExamSystem(){
   return `EXAMINER MODE INSTRUCTIONS
 
@@ -769,16 +793,48 @@ Do not include any other tags.`;
 
 async function beginExam(){
   exMaterial=document.getElementById('ex-material').value.trim();
-  if(exMaterial.length<60){document.getElementById('ex-err').style.display='block';return;}
+
+  if(exMaterial.length<60){
+    document.getElementById('ex-err').style.display='block';
+    return;
+  }
+
   document.getElementById('ex-err').style.display='none';
   document.getElementById('ex-input').style.display='none';
   document.getElementById('ex-session').style.display='block';
   document.getElementById('ex-topic').textContent=exMaterial.substring(0,70)+'…';
-  exHistory=[];exGaps=[];exStrengths=[];exExchanges=0;
+
+  const input = document.getElementById('ex-input-ta');
+  input.disabled=false;
+  input.placeholder='Answer the examiner\'s question…';
+  input.value='';
+
+  initExSpeech();
+
+  exHistory=[];
+  exGaps=[];
+  exStrengths=[];
+  exExchanges=0;
+  exLoading=false;
+
+  document.getElementById('ex-exchanges').textContent='0';
+  document.getElementById('ex-gaps-count').textContent='0';
+  document.getElementById('ex-report-btn').style.display='none';
+  document.getElementById('ex-gaps-list').innerHTML='<p class="panel-empty">None found yet…</p>';
+  document.getElementById('ex-strengths-list').innerHTML='';
+  document.getElementById('ex-strengths-wrap').style.display='none';
+
   exAddThinking();
+
   const raw=await callAPI([{role:'user',content:'Begin the examination.'}],buildExamSystem());
+
   exRemoveThinking();
-  if(raw){const p=parse(raw);exAddMsg('ai',p.reply);exHistory.push({role:'user',content:'Begin.'},{role:'assistant',content:raw});}
+
+  if(raw){
+    const p=parse(raw);
+    exAddMsg('ai',p.reply);
+    exHistory.push({role:'user',content:'Begin.'},{role:'assistant',content:raw});
+  }
 }
 
 async function sendExamAnswer(){
@@ -815,8 +871,16 @@ async function sendExamAnswer(){
 
     if(p.status==='complete'){
       document.getElementById('ex-report-btn').style.display='inline-flex';
-      document.getElementById('ex-input-ta').disabled=true;
-      document.getElementById('ex-input-ta').placeholder='Examination complete. Generate your report.';
+      ta.disabled=true;
+      ta.placeholder='Examination complete. Generate your report.';
+      const note = document.getElementById('ex-voice-note');
+      if(note){
+        note.textContent='Examination complete. Voice input is disabled.';
+        note.style.color='var(--muted)';
+      }
+      if(exRecognition){ try { exRecognition.abort(); } catch(e) {} }
+      exRecording=false;
+      exCtrlHeld=false;
       document.querySelector('.main').scrollTo(0,99999);
       return;
     }
@@ -826,7 +890,7 @@ async function sendExamAnswer(){
     document.getElementById('ex-report-btn').style.display='inline-flex';
   }
 
-  document.getElementById('ex-input-ta').focus();
+  ta.focus();
   document.querySelector('.main').scrollTo(0,99999);
 }
 
@@ -879,7 +943,7 @@ async function generateExamReport(){
     clean.split(/\n+/).filter(l=>l.trim()).forEach(line=>{
       const p=document.createElement('p');
       p.textContent=line.trim();
-      if(/^\d+[\.\)]/.test(line.trim()))p.className='heading';
+      if(/^\d+[\.)]/.test(line.trim()))p.className='heading';
       rc.appendChild(p);
     });
   }
@@ -906,9 +970,12 @@ function resetExamine(){
   document.getElementById('ex-report').style.display='none';
   document.getElementById('ex-input').style.display='block';
 
-  document.getElementById('ex-input-ta').disabled=false;
-  document.getElementById('ex-input-ta').placeholder='Answer the examiner\'s question…';
-  document.getElementById('ex-input-ta').value='';
+  const input = document.getElementById('ex-input-ta');
+  if(input){
+    input.disabled=false;
+    input.placeholder='Answer the examiner\'s question…';
+    input.value='';
+  }
 
   if(exRecognition){
     try { exRecognition.abort(); } catch(e) {}
@@ -921,10 +988,45 @@ function resetExamine(){
 
   const note = document.getElementById('ex-voice-note');
   if(note){
-    note.textContent='Hold Ctrl to speak. Release Ctrl to stop.';
+    note.textContent='Hold Ctrl to speak. Release Ctrl to submit.';
     note.style.color='var(--muted)';
   }
 }
+
+document.addEventListener('keydown', e => {
+  const examineActive = document.getElementById('ex-session')?.style.display === 'block';
+
+  if(!examineActive) return;
+  if(e.key !== 'Control') return;
+  if(exCtrlHeld) return;
+
+  e.preventDefault();
+  exCtrlHeld = true;
+
+  if(!exRecognition){
+    initExSpeech();
+  }
+
+  exStartRecording();
+});
+
+document.addEventListener('keyup', e => {
+  const examineActive = document.getElementById('ex-session')?.style.display === 'block';
+
+  if(e.key !== 'Control') return;
+
+  e.preventDefault();
+  exCtrlHeld = false;
+
+  if(examineActive){
+    exStopRecording(true);
+  }
+});
+
+window.addEventListener('blur', () => {
+  exCtrlHeld = false;
+  exStopRecording(false);
+});
 
 let tcMaterial='',tcSections=[],tcIdx=0,tcHistory=[],tcNotes=[],tcLearnedCount=0,tcLoading=false;
 let tcRecognition=null,tcRecording=false;
@@ -1214,33 +1316,6 @@ function resetTeach(){
   if(tcRecognition)tcRecognition.abort();
   tcRecognition=null;
 }
-  document.addEventListener('keydown', e => {
-  const examineActive = document.getElementById('ex-session')?.style.display === 'block';
-
-  if(!examineActive) return;
-  if(e.key !== 'Control') return;
-  if(exCtrlHeld) return;
-
-  exCtrlHeld = true;
-  exStartRecording();
-});
-
-document.addEventListener('keyup', e => {
-  const examineActive = document.getElementById('ex-session')?.style.display === 'block';
-
-  if(e.key !== 'Control') return;
-
-  exCtrlHeld = false;
-
-  if(examineActive){
-    exStopRecording(true);
-  }
-});
-
-window.addEventListener('blur', () => {
-  exCtrlHeld = false;
-  exStopRecording(false);
-});
 </script>
 </body>
 </html>
