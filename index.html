@@ -151,6 +151,12 @@ textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
 .main::-webkit-scrollbar{width:5px;}
 .main::-webkit-scrollbar-track{background:transparent;}
 .main::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;}
+
+.file-upload-box{margin-top:14px;margin-bottom:12px;padding:14px 16px;background:var(--cream);border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.file-upload-copy{font-size:12px;color:var(--muted);line-height:1.5;}
+.file-upload-copy strong{display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--ink);margin-bottom:3px;}
+.file-input{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);max-width:280px;}
+.file-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:2px;width:100%;}
 @media(max-width:640px){
   .view{padding:24px 20px 48px;}
   .sidebar{display:none;}
@@ -263,6 +269,14 @@ textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
           </div>
           <label class="input-label" style="margin-top:12px;">Your material</label>
           <textarea class="study-ta" id="ex-material" rows="12" placeholder="Paste any academic text — lecture notes, paper excerpt, textbook passage, research abstract…"></textarea>
+          <div class="file-upload-box">
+            <div class="file-upload-copy">
+              <strong>Upload source</strong>
+              PDF, PowerPoint (.pptx), or text file
+            </div>
+            <input class="file-input" type="file" id="ex-file" accept=".pdf,.pptx,.txt,.md,.text,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" onchange="loadStudyFile(event,'ex')">
+            <div class="file-status" id="ex-file-status"></div>
+          </div>
           <div class="ta-footer">
             <span id="ex-chars" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">0 characters</span>
             <div style="display:flex;gap:10px;">
@@ -341,6 +355,14 @@ textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
           </div>
           <label class="input-label" style="margin-top:12px;">Your material</label>
           <textarea class="study-ta" id="tc-material" rows="12" placeholder="Paste any academic text — lecture notes, paper excerpt, textbook passage…"></textarea>
+          <div class="file-upload-box">
+            <div class="file-upload-copy">
+              <strong>Upload source</strong>
+              PDF, PowerPoint (.pptx), or text file
+            </div>
+            <input class="file-input" type="file" id="tc-file" accept=".pdf,.pptx,.txt,.md,.text,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation" onchange="loadStudyFile(event,'tc')">
+            <div class="file-status" id="tc-file-status"></div>
+          </div>
           <div class="ta-footer">
             <span id="tc-chars" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);">0 characters</span>
             <div style="display:flex;gap:10px;">
@@ -431,7 +453,13 @@ textarea.chat-ta::placeholder{color:var(--muted);opacity:0.6;}
   </main>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+
 const EXAMPLES = {
   bio:`The cell membrane is a fluid mosaic model consisting primarily of a phospholipid bilayer embedded with proteins. The hydrophilic phosphate heads face outward toward aqueous environments, while hydrophobic fatty acid tails face inward. Cholesterol molecules are interspersed within the membrane, regulating fluidity—increasing rigidity at high temperatures and preventing crystallization at low temperatures. Membrane proteins serve diverse functions: integral proteins span the entire membrane and facilitate transport, while peripheral proteins interact with the lipid layer or integral proteins. The selective permeability of the membrane maintains cellular homeostasis by controlling the passage of ions, nutrients, and wastes.`,
   econ:`Keynesian economics, developed by John Maynard Keynes during the Great Depression, argues that aggregate demand—the total spending in an economy—is the primary driver of output and employment. Unlike classical economics, which assumes markets self-correct through price mechanisms, Keynesian theory posits that economies can remain in prolonged states of unemployment equilibrium. Keynes emphasized the role of government intervention: during recessions, increased government spending and lower taxes can stimulate demand, while during inflation, reduced spending can cool the economy. The multiplier effect amplifies this impact—each dollar of government spending generates additional spending in the economy as recipients spend their income.`,
@@ -611,6 +639,152 @@ function loadEx(mode,key){
   document.getElementById(mode+'-chars').textContent=ta.value.length+' characters';
 }
 
+async function loadStudyFile(event, mode){
+  const file = event.target.files && event.target.files[0];
+  if(!file) return;
+
+  const ta = document.getElementById(mode + '-material');
+  const chars = document.getElementById(mode + '-chars');
+  const status = document.getElementById(mode + '-file-status');
+
+  if(status){
+    status.textContent = 'Reading ' + file.name + '...';
+    status.style.color = 'var(--muted)';
+  }
+
+  try{
+    let text = '';
+    const name = file.name.toLowerCase();
+
+    if(name.endsWith('.pdf') || file.type === 'application/pdf'){
+      text = await extractPdfText(file);
+    } else if(name.endsWith('.pptx') || file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'){
+      text = await extractPptxText(file);
+    } else if(name.endsWith('.ppt')){
+      throw new Error('Older .ppt files are not supported. Export or save the file as .pptx and try again.');
+    } else {
+      text = await readPlainTextFile(file);
+    }
+
+    text = cleanExtractedText(text);
+
+    if(!text){
+      throw new Error('No readable text was found. This may be a scanned PDF or an image-only slide deck.');
+    }
+
+    ta.value = text;
+    chars.textContent = text.length + ' characters';
+
+    if(status){
+      status.textContent = 'Loaded: ' + file.name;
+      status.style.color = 'var(--success)';
+    }
+  } catch(error){
+    console.error('File import error:', error);
+    if(status){
+      status.textContent = error.message || 'Could not read this file.';
+      status.style.color = 'var(--danger)';
+    }
+    alert(error.message || 'Could not read this file.');
+  }
+
+  event.target.value = '';
+}
+
+function readPlainTextFile(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result || '');
+    reader.onerror = () => reject(new Error('Could not read this text file.'));
+    reader.readAsText(file);
+  });
+}
+
+async function extractPdfText(file){
+  if(!window.pdfjsLib){
+    throw new Error('PDF reader did not load. Check your internet connection and try again.');
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+
+  for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++){
+    const page = await pdf.getPage(pageNum);
+    const content = await page.getTextContent();
+    const pageText = content.items
+      .map(item => item.str || '')
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if(pageText){
+      fullText += '
+
+Page ' + pageNum + '
+' + pageText;
+    }
+  }
+
+  return fullText;
+}
+
+async function extractPptxText(file){
+  if(!window.JSZip){
+    throw new Error('PowerPoint reader did not load. Check your internet connection and try again.');
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const zip = await JSZip.loadAsync(arrayBuffer);
+  const slideFiles = Object.keys(zip.files)
+    .filter(name => /^ppt\/slides\/slide\d+\.xml$/i.test(name))
+    .sort((a,b) => {
+      const an = Number((a.match(/slide(\d+)\.xml/i) || [0,0])[1]);
+      const bn = Number((b.match(/slide(\d+)\.xml/i) || [0,0])[1]);
+      return an - bn;
+    });
+
+  if(!slideFiles.length){
+    throw new Error('No readable PowerPoint slides were found. Make sure the file is a .pptx file.');
+  }
+
+  const parser = new DOMParser();
+  let fullText = '';
+
+  for(let i = 0; i < slideFiles.length; i++){
+    const xml = await zip.files[slideFiles[i]].async('string');
+    const doc = parser.parseFromString(xml, 'application/xml');
+    const textNodes = Array.from(doc.getElementsByTagName('a:t'));
+    const slideText = textNodes
+      .map(node => node.textContent || '')
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if(slideText){
+      fullText += '
+
+Slide ' + (i + 1) + '
+' + slideText;
+    }
+  }
+
+  return fullText;
+}
+
+function cleanExtractedText(text){
+  return String(text || '')
+    .replace(/
+/g, '
+')
+    .replace(/[ 	]+/g, ' ')
+    .replace(/
+{3,}/g, '
+
+')
+    .trim();
+}
+
 let exMaterial='',exHistory=[],exGaps=[],exStrengths=[],exExchanges=0,exLoading=false;
 let exRecognition=null,exRecording=false,exCtrlHeld=false,exFinalTranscript='';
 
@@ -621,6 +795,8 @@ document.getElementById('ex-material').addEventListener('input',function(){
 function clearEx(){
   document.getElementById('ex-material').value='';
   document.getElementById('ex-chars').textContent='0 characters';
+  const file=document.getElementById('ex-file'); if(file) file.value='';
+  const status=document.getElementById('ex-file-status'); if(status) status.textContent='';
 }
 
 function exKey(e){
@@ -966,6 +1142,8 @@ function resetExamine(){
   document.getElementById('ex-report-btn').style.display='none';
   document.getElementById('ex-material').value='';
   document.getElementById('ex-chars').textContent='0 characters';
+  const exFile=document.getElementById('ex-file'); if(exFile) exFile.value='';
+  const exStatus=document.getElementById('ex-file-status'); if(exStatus) exStatus.textContent='';
   document.getElementById('ex-session').style.display='none';
   document.getElementById('ex-report').style.display='none';
   document.getElementById('ex-input').style.display='block';
@@ -1034,7 +1212,12 @@ let tcRecognition=null,tcRecording=false;
 document.getElementById('tc-material').addEventListener('input',function(){
   document.getElementById('tc-chars').textContent=this.value.length+' characters';
 });
-function clearTc(){document.getElementById('tc-material').value='';document.getElementById('tc-chars').textContent='0 characters';}
+function clearTc(){
+  document.getElementById('tc-material').value='';
+  document.getElementById('tc-chars').textContent='0 characters';
+  const file=document.getElementById('tc-file'); if(file) file.value='';
+  const status=document.getElementById('tc-file-status'); if(status) status.textContent='';
+}
 function tcKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendTeachExplanation();}}
 
 function initTcSpeech(){
@@ -1310,6 +1493,8 @@ function resetTeach(){
   document.getElementById('tc-learned').textContent='0';
   document.getElementById('tc-material').value='';
   document.getElementById('tc-chars').textContent='0 characters';
+  const tcFile=document.getElementById('tc-file'); if(tcFile) tcFile.value='';
+  const tcStatus=document.getElementById('tc-file-status'); if(tcStatus) tcStatus.textContent='';
   document.getElementById('tc-session').style.display='none';
   document.getElementById('tc-report').style.display='none';
   document.getElementById('tc-input').style.display='block';
